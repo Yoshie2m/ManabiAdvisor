@@ -15,18 +15,18 @@
 
 複数の学年・試験種別を同時に扱うため、「魔力修練コンテキスト (Mana Cultivation Context)」のモデリングやコンテンツ構造（教材・出題範囲・難易度等）は、学年・試験種別ごとに異なるカリキュラムを表現できるよう設計すること。新たなコンテキストを増やすのではなく、このコンテキスト内のモデリングで吸収する。
 
-**学習コンテンツの配置方針**: 「どの学年・試験種別がどの出題範囲・難易度構成を持つか」という構造・ルールは `ExamType` / `Curriculum` / `LearningUnit` 等のドメインモデルとして `domain/models/` に表現する。問題文・選択肢・解説・音声/画像などのコンテンツ本体はTypeScriptコードに埋め込まず、Supabaseのテーブル／Storageに格納し、`infrastructure/supabase/` のRepository経由で取得すること。コンテンツ管理自体（作成・タグ付け・バージョン管理等）が複雑化した場合は、独立した「教材コンテキスト (Content/Curriculum Context)」への切り出しを検討する。
+**学習コンテンツの配置方針**: 「どの学年・試験種別がどの出題範囲・難易度構成を持つか」という構造・ルールは `ExamType` / `Curriculum` / `LearningUnit` 等のドメインモデルとして `domain/models/` に表現する。問題文・選択肢・解説・音声/画像などのコンテンツ本体はTypeScriptコードに埋め込まず、Firestoreのコレクション／Cloud Storageに格納し、`infrastructure/firebase/` のRepository経由で取得すること。コンテンツ管理自体（作成・タグ付け・バージョン管理等）が複雑化した場合は、独立した「教材コンテキスト (Content/Curriculum Context)」への切り出しを検討する。
 
 ## 技術スタック
 
 - **Frontend**: TypeScript + Next.js (App Router) / React
 - **Styling**: Tailwind CSS。アプリ内の「学舎（House）」単位で動的にテーマを切り替える
-- **Backend & DB**: Supabase（PostgreSQL、Row Level Security 併用）
+- **Backend & DB**: Firebase（Firestore、Firebase Authentication、Security Rules 併用）
 - **State management**: Zustand / React Context を用いて、ドメインモデルをプレゼンテーション層へ射影する
 
 ## ドメインモデル（DDD）
 
-本プロジェクトはドメイン駆動設計（DDD）で構築する。ビジネスロジックは必ずドメイン層に置き、UIコンポーネントやSupabaseクエリに直接書いてはならない（詳細は後述の「開発の掟」参照）。
+本プロジェクトはドメイン駆動設計（DDD）で構築する。ビジネスロジックは必ずドメイン層に置き、UIコンポーネントやFirestoreクエリに直接書いてはならない（詳細は後述の「開発の掟」参照）。
 
 境界づけられたコンテキスト（Bounded Contexts）:
 1. **学舎割当コンテキスト (House Assignment Context)** — 生徒の入学、魔力資質の鑑定、および配属学舎（`RegiusCardis` または `RoseSleep`）を判定するルール群。これが中心ドメインとなる。
@@ -41,7 +41,7 @@
 
 ## ディレクトリ構造（目標レイアウト）
 
-`src/` は、インフラ（Supabase）やフレームワーク（Next.js）の変更がドメインロジックに波及しないよう、オニオンアーキテクチャ/クリーンアーキテクチャのレイヤー構造を採用する:
+`src/` は、インフラ（Firebase）やフレームワーク（Next.js）の変更がドメインロジックに波及しないよう、オニオンアーキテクチャ/クリーンアーキテクチャのレイヤー構造を採用する:
 
 ```text
 src/
@@ -60,7 +60,7 @@ src/
         │   └── repositories/    # StudentRepository (インターフェース定義)
         ├── usecase/             # ユースケース層（アプリケーションサービス、例: AssignHouse/）
         └── infrastructure/      # インフラストラクチャ層
-            └── supabase/        # Supabaseクライアント・Repositoryの具象実装
+            └── firebase/        # Firebaseクライアント・Repositoryの具象実装
 
 public/
 ├── fonts/                       # デザインシステムのフォントアセット (Cinzel 等)
@@ -86,7 +86,7 @@ UI/UXの単一の真実源（Single Source of Truth）は、外部の [Advisaria
 
 以下は提案ではなく、プロジェクトの絶対ルールである:
 
-1. **仕様駆動開発 (Specification-Driven Development)**: ビジネスロジックをUIやSupabaseのクエリに直接記述してはならない。必ず各コンテキストの `domain/specs/` に仕様オブジェクトを定義し、それらを組み合わせて判定する。
+1. **仕様駆動開発 (Specification-Driven Development)**: ビジネスロジックをUIやFirestoreのクエリに直接記述してはならない。必ず各コンテキストの `domain/specs/` に仕様オブジェクトを定義し、それらを組み合わせて判定する。
 2. **型安全性の厳守**: `any` の使用は一切禁止。以下のコマンドでコンパイルエラーがゼロであることが、コミットの絶対条件:
    ```bash
    npx tsc --noEmit

@@ -1,0 +1,45 @@
+/*
+ * Provisional values. Replace with the values exported from tokens.json
+ * in the design system artifact once it is wired up.
+ */
+
+:root {
+  --color-regius-bg: #0b0b10;
+  --color-regius-text: #f5f5f7;
+  --color-regius-primary: #c9a227;
+  --color-regius-on-primary: #0b0b10;
+  --color-regius-accent: #7a1f2b;
+  --color-regius-focus: #c9a227;
+
+  --color-rose-bg: #241b2e;
+  --color-rose-text: #efe6f5;
+  --color-rose-primary: #b983d6;
+  --color-rose-on-primary: #241b2e;
+  --color-rose-accent: #d6a4e0;
+  --color-rose-focus: #b983d6;
+
+  --house-bg: var(--color-regius-bg);
+  --house-text: var(--color-regius-text);
+  --house-primary: var(--color-regius-primary);
+  --house-on-primary: var(--color-regius-on-primary);
+  --house-accent: var(--color-regius-accent);
+  --house-focus: var(--color-regius-focus);
+}
+
+[data-theme="regiuscardis"] {
+  --house-bg: var(--color-regius-bg);
+  --house-text: var(--color-regius-text);
+  --house-primary: var(--color-regius-primary);
+  --house-on-primary: var(--color-regius-on-primary);
+  --house-accent: var(--color-regius-accent);
+  --house-focus: var(--color-regius-focus);
+}
+
+[data-theme="rosesleep"] {
+  --house-bg: var(--color-rose-bg);
+  --house-text: var(--color-rose-text);
+  --house-primary: var(--color-rose-primary);
+  --house-on-primary: var(--color-rose-on-primary);
+  --house-accent: var(--color-rose-accent);
+  --house-focus: var(--color-rose-focus);
+}

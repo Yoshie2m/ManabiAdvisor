@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  --color-house-bg: var(--house-bg);
+  --color-house-text: var(--house-text);
+  --color-house-primary: var(--house-primary);
+  --color-house-on-primary: var(--house-on-primary);
+  --color-house-accent: var(--house-accent);
+  --color-house-focus: var(--house-focus);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
+}
+
+body {
+  background: var(--house-bg);
+  color: var(--house-text);
+  font-family: Arial, Helvetica, sans-serif;
+}

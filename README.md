@@ -21,7 +21,7 @@
 
 * **Frontend**: TypeScript + Next.js (App Router) / React
 * **Styling**: Tailwind CSS (学舎のテーマに応じた動的テーマ切り替え)
-* **Backend & Database**: Supabase (PostgreSQL / Row Level Securityによる厳格なデータ防衛)
+* **Backend & Database**: Firebase (Firestore / Firebase Authentication、Security Rulesによる厳格なデータ防衛)
 * **State Management**: Zustand / React Context (ドメインモデルのPresentation層への射影)
 
 ---
@@ -34,7 +34,7 @@
 2. **魔力修練コンテキスト (Mana Cultivation Context)**
    * 配属後の生徒の魔力パラメータの成長、修練の進捗状況を管理するドメイン。
    * 中学2年生の定期テスト対策・英検対策・小学6年生の中学受験対策といった、学年・試験種別ごとに異なるカリキュラム（教材・出題範囲・難易度等）の多様性は、新たなコンテキストを増やすのではなく、このコンテキスト内のモデリングで吸収する。
-   * **学習コンテンツの配置方針**: 「どの学年・試験種別がどの出題範囲・難易度構成を持つか」という構造・ルールは `ExamType` / `Curriculum` / `LearningUnit` 等のドメインモデルとして `domain/models/` に表現する。一方、問題文・選択肢・解説・音声/画像などのコンテンツ本体はTypeScriptコードに埋め込まず、Supabaseのテーブル／Storageに格納し、`infrastructure/supabase/` のRepository経由で取得する。コンテンツ管理自体（作成・タグ付け・バージョン管理等）が複雑化した場合は、独立した「教材コンテキスト (Content/Curriculum Context)」への切り出しを検討する。
+   * **学習コンテンツの配置方針**: 「どの学年・試験種別がどの出題範囲・難易度構成を持つか」という構造・ルールは `ExamType` / `Curriculum` / `LearningUnit` 等のドメインモデルとして `domain/models/` に表現する。一方、問題文・選択肢・解説・音声/画像などのコンテンツ本体はTypeScriptコードに埋め込まず、Firestoreのコレクション／Cloud Storageに格納し、`infrastructure/firebase/` のRepository経由で取得する。コンテンツ管理自体（作成・タグ付け・バージョン管理等）が複雑化した場合は、独立した「教材コンテキスト (Content/Curriculum Context)」への切り出しを検討する。
 3. **学園案内コンテキスト (Academy Guide Context / UI)**
    * [デザインシステム](#5-デザインシステム連携-design-system-integration)そのもの。配属学舎のコンテキストに応じてUIの色彩・フォント・装飾を動的に切り替えるプレゼンテーション層。
 
@@ -58,7 +58,7 @@
 ---
 
 ## 4. 📂 ディレクトリ構造 (Architecture)
-`src/` 配下は、インフラ（Supabase）やフレームワーク（Next.js）の変更がドメインロジックに波及しないよう、オニオンアーキテクチャ/クリーンアーキテクチャのレイヤー構造を採用します。
+`src/` 配下は、インフラ（Firebase）やフレームワーク（Next.js）の変更がドメインロジックに波及しないよう、オニオンアーキテクチャ/クリーンアーキテクチャのレイヤー構造を採用します。
 
 ```text
 src/
@@ -78,7 +78,7 @@ src/
         ├── usecase/             # ユースケース層（アプリケーションサービス）
         │   └── AssignHouse/     # 学舎判定・配属を実行するシナリオ
         └── infrastructure/      # インフラストラクチャ層
-            └── supabase/        # Supabaseクライアント・Repositoryの具象実装
+            └── firebase/        # Firebaseクライアント・Repositoryの具象実装
 
 public/
 ├── fonts/                       # デザインシステムのフォントアセット (Cinzel 等)
@@ -105,7 +105,7 @@ public/
 当学府のシステム構築においては、以下の品質ゲートの通過が義務付けられます。
 
 1. **仕様駆動開発 (Specification-Driven Development)**:
-   すべてのビジネスロジックはUIやSupabaseのクエリに直接記述してはならない。必ず `domain/specs/` に仕様オブジェクトを定義し、それを結合して判定すること。
+   すべてのビジネスロジックはUIやFirestoreのクエリに直接記述してはならない。必ず `domain/specs/` に仕様オブジェクトを定義し、それを結合して判定すること。
 2. **型安全性の厳守**:
    コンパイルエラーおよび型定義の妥協（`any` の使用）は一切禁止する。
    ```bash
