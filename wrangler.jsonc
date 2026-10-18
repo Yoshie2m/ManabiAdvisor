@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "manabi-advisor",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-12",
+  "compatibility_flags": ["nodejs_compat"],
+  // Firebase's client config is not a secret (see src/lib/firebase.ts);
+  // access is enforced by Firestore Security Rules, not by hiding these.
+  "vars": {
+    "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyB-inkKYWRjaUCr3YZCbPQQ4ZgbrZtQzXE",
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "manabi-advisor.firebaseapp.com",
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "manabi-advisor",
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": "manabi-advisor.firebasestorage.app",
+    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "795741603946",
+    "NEXT_PUBLIC_FIREBASE_APP_ID": "1:795741603946:web:a596ef122c81f9b2a72213"
+  },
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  }
+}

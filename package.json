@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "firebase": "^13.0.0",
@@ -18,6 +21,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.12",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24",
     "@types/react": "^19",
@@ -26,6 +30,15 @@
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.151.1"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261012.1": true,
+    "fsevents@2.3.3": true,
+    "protobufjs@7.6.6": true,
+    "unrs-resolver@1.12.2": true,
+    "@firebase/util@1.15.3": true
   }
 }
