@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Deny by default. Add scoped allow rules per collection as the
+    // Firestore schema for each bounded context is finalized.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
