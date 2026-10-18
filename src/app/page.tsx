@@ -6,14 +6,20 @@ import { useState } from "react";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
 import { MagicalToggle } from "@/components/ui/MagicalToggle";
+import { HOUSES, type House } from "@/contexts/house-assignment/domain/models/House";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import { LAUNCHED_GRADES } from "@/contexts/mana-cultivation/domain/specs/GradeExamTypePolicy";
 import { useAcademyStore } from "@/stores/useAcademyStore";
 
-const HOUSE_LABEL = {
+const HOUSE_LABEL: Record<House, string> = {
   RegiusCardis: "レギウス・カルディス",
   RoseSleep: "ローズスリープ",
-} as const;
+};
+
+const HOUSE_DESCRIPTION: Record<House, string> = {
+  RegiusCardis: "規律正しく、物事を秩序立てて進める力を伸ばしたい人向けの学舎。",
+  RoseSleep: "ミステリアスな個性を大切に、自分らしい魔力の伸ばし方を追求したい人向けの学舎。",
+};
 
 const GRADE_LABEL: Record<Grade, string> = {
   Pre: "プレ期間（小6）",
@@ -25,51 +31,19 @@ const GRADE_LABEL: Record<Grade, string> = {
   Sixth: "シックスグレード（高3）",
 };
 
-function ManaQualitySlider({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className="flex w-full flex-col gap-1 text-sm">
-      <span className="flex justify-between">
-        <span>{label}</span>
-        <span className="tabular-nums text-house-primary">{value}</span>
-      </span>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-        style={{ accentColor: "var(--house-primary)" }}
-        className="h-2 w-full cursor-pointer rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-      />
-    </label>
-  );
-}
-
 export default function Home() {
   const { house, isEnrolled, isLoading, error, enroll } = useAcademyStore();
-  const [order, setOrder] = useState(50);
-  const [chaos, setChaos] = useState(50);
-  const [amount, setAmount] = useState(50);
   const [grade, setGrade] = useState<Grade>(LAUNCHED_GRADES[0]);
+  const [selectedHouse, setSelectedHouse] = useState<House | null>(null);
 
   return (
-    <ThemeProvider house={house ?? "RegiusCardis"}>
+    <ThemeProvider house={house ?? selectedHouse ?? "RegiusCardis"}>
       <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 bg-house-bg p-8 text-house-text">
         <h1 className="font-display text-2xl">Advisaria Magica Academy</h1>
 
-        <GrimoireCard title="魔力資質の鑑定">
+        <GrimoireCard title="学舎の選択">
           <div className="flex w-72 max-w-full flex-col gap-4">
-            <p className="text-sm">
-              学年段階・秩序度・混沌度・魔力量を入力し、配属される学舎を鑑定します。
-            </p>
+            <p className="text-sm">学年段階と、入りたい学舎を選んでください。</p>
 
             <fieldset className="flex flex-col gap-1 text-sm">
               <legend className="mb-1">学年段階</legend>
@@ -92,17 +66,33 @@ export default function Home() {
               </div>
             </fieldset>
 
-            <ManaQualitySlider label="秩序度" value={order} onChange={setOrder} />
-            <ManaQualitySlider label="混沌度" value={chaos} onChange={setChaos} />
-            <ManaQualitySlider label="魔力量" value={amount} onChange={setAmount} />
+            <fieldset className="flex flex-col gap-2 text-sm">
+              <legend className="mb-1">学舎</legend>
+              {HOUSES.map((candidate) => (
+                <button
+                  key={candidate}
+                  type="button"
+                  onClick={() => setSelectedHouse(candidate)}
+                  aria-pressed={selectedHouse === candidate}
+                  className={`rounded-md border px-3 py-2 text-left transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus ${
+                    selectedHouse === candidate
+                      ? "border-house-primary bg-house-primary text-house-on-primary"
+                      : "border-house-primary/50 hover:opacity-80"
+                  }`}
+                >
+                  <span className="font-display font-semibold">{HOUSE_LABEL[candidate]}</span>
+                  <p className="mt-1 text-xs">{HOUSE_DESCRIPTION[candidate]}</p>
+                </button>
+              ))}
+            </fieldset>
 
             <button
               type="button"
-              disabled={isLoading}
-              onClick={() => enroll({ order, chaos, amount }, grade)}
+              disabled={isLoading || !selectedHouse}
+              onClick={() => selectedHouse && enroll(selectedHouse, grade)}
               className="mt-2 rounded-md bg-house-primary px-4 py-2 text-sm font-semibold text-house-on-primary transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
             >
-              {isLoading ? "鑑定中…" : "鑑定する"}
+              {isLoading ? "入学手続き中…" : "この学舎に入学する"}
             </button>
 
             {error && <p className="text-sm text-house-accent">{error}</p>}

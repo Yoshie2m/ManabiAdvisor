@@ -1,10 +1,18 @@
 # 戦術的仕様: 学舎割当コンテキスト (House Assignment Context)
 
-用語定義は `../glossary.md` の「1. 学舎割当コンテキスト」を参照。本ドキュメントは既存実装 (`src/contexts/house-assignment/`) を仕様として明文化したものであり、新規のビジネスルール追加は含まない。
+用語定義は `../glossary.md` の「1. 学舎割当コンテキスト」を参照。
+
+## 意思決定の経緯（第2回ヒアリング: 鑑定UXの変更）
+
+初版では「魔力資質（`ManaQuality`: 秩序度・混沌度・魔力量）を数値で入力し、`HouseAssignmentSpecification` が自動判定する」という仕様だった。これを「数値入力ではなく、各学舎の特性を選択肢として提示し、生徒自身がどちらに入りたいかを選ぶ」方式に変更する。ユーザーへのヒアリングにより、以下の方針を確認済み:
+
+1. `ManaQuality` 値オブジェクトは今回の変更で完全に廃止する（入力UIだけでなく、型自体をコードから削除する）。
+2. 生徒が選んだ学舎は常にそのまま確定する。人数上限・抽選などの例外条件は無い。
+3. 上記により `HouseAssignmentSpecification`（`regiusCardisSpecification` / `roseSleepSpecification`）および `StudentAggregate.decideHouse()` は不要になるため削除する。判定ロジックが無くなるので、`AssignHouse` ユースケース（判定専用の別ステップ）も不要になり削除する。学舎の確定は `EnrollStudent`（入学）ユースケースが選ばれた学舎を受け取ってそのまま確定させる、1ステップのフローに統合する。
 
 ## 値オブジェクト
 
-### StudentId
+### StudentId（変更なし）
 
 ```ts
 class StudentId {
@@ -16,23 +24,7 @@ class StudentId {
 
 - **不変条件**: 空文字列（trim後）から生成できない。
 
-### ManaQuality
-
-```ts
-type ManaQualityProps = { order: number; chaos: number; amount: number };
-
-class ManaQuality {
-  static create(props: ManaQualityProps): ManaQuality; // 各値が範囲外なら例外
-  readonly order: number;  // 秩序度
-  readonly chaos: number;  // 混沌度
-  readonly amount: number; // 魔力量
-}
-```
-
-- **不変条件**: `order` / `chaos` / `amount` はいずれも `0` 以上 `100` 以下。範囲外の値が1つでもあれば生成時に例外を投げる。
-- 生成後は `readonly` のため不変。
-
-### House
+### House（変更なし）
 
 ```ts
 const HOUSES = ["RegiusCardis", "RoseSleep"] as const;
@@ -41,6 +33,7 @@ function isHouse(value: string): value is House;
 ```
 
 - **不変条件**: 値は `"RegiusCardis"` または `"RoseSleep"` のいずれかのみ。
+- 各値の特性（UIで選択肢として提示する説明文）はドメイン層の関心事ではなく、プレゼンテーション層（`src/app/page.tsx` 等）で保持する。
 
 ## エンティティ
 
@@ -48,36 +41,13 @@ function isHouse(value: string): value is House;
 
 ```ts
 class Student {
-  constructor(id: StudentId, manaQuality: ManaQuality, house: House | null = null);
-  getManaQuality(): ManaQuality;
-  getHouse(): House | null;
-  assignTo(house: House): void; // 学舎を確定させる
+  constructor(id: StudentId, house: House);
+  getHouse(): House;
 }
 ```
 
 - **識別子**: `StudentId`。
-- **状態遷移**: `house` は未配属（`null`）→ 配属済み（`House`）の一方向。`assignTo` は集約（`StudentAggregate`）経由でのみ呼び出すこと。
-
-## 仕様 (Specification)
-
-### HouseAssignmentSpecification
-
-```ts
-interface HouseAssignmentSpecification {
-  readonly house: House;
-  isSatisfiedBy(manaQuality: ManaQuality): boolean;
-}
-```
-
-実装済みの仕様インスタンス:
-
-| 仕様 | 学舎 | 判定条件 |
-|---|---|---|
-| `regiusCardisSpecification` | `RegiusCardis` | `manaQuality.order >= manaQuality.chaos` |
-| `roseSleepSpecification` | `RoseSleep` | `manaQuality.chaos > manaQuality.order` |
-
-- 2つの仕様は互いに排他的かつ網羅的（`order >= chaos` と `chaos > order` は全実数で過不足なく分岐する）。`amount`（魔力量）は現行の判定条件には関与しない。
-- `houseAssignmentSpecifications` 配列の順序でマッチングを行う（`Array.prototype.find`）。将来仕様を追加する場合は、排他性が崩れないよう既存2仕様との関係を明文化してから追加する。
+- 生成時に選ばれた学舎がそのまま確定し、以後変更する操作は無い（状態遷移・`assignTo` は廃止）。
 
 ## 集約ルート
 
@@ -85,20 +55,18 @@ interface HouseAssignmentSpecification {
 
 ```ts
 class StudentAggregate {
-  static create(id: StudentId, manaQuality: ManaQuality): StudentAggregate;
+  static create(id: StudentId, house: House): StudentAggregate;
   get id(): StudentId;
-  get house(): House | null;
-  decideHouse(): House; // 仕様群に照合し、Studentへ配属を確定して返す
+  get house(): House;
 }
 ```
 
-- **不変条件（最重要）**: `decideHouse()` はいずれかの `HouseAssignmentSpecification` に合致した場合のみ学舎を確定させる。合致する仕様が1つもない場合は例外を投げ、`Student.house` は変更しない。
-- `decideHouse()` 呼び出し後は `student.getHouse()` が必ず非 `null` になる（例外が投げられなかった場合）。
-- 集約の外部（ユースケース層・UI）から直接 `Student.assignTo` を呼び出してはならない。必ず `StudentAggregate.decideHouse()` を経由する。
+- `create` は生徒が選んだ学舎をそのまま確定させて集約を生成する。判定ロジックが無いため、新規生成と永続化からの復元（旧 `reconstruct`）は同じ `create` で表現できる（復元専用ファクトリは不要）。
+- `house` は常に非 `null`。未配属の状態は存在しない。
 
 ## リポジトリ
 
-### StudentRepository（インターフェース）
+### StudentRepository（インターフェース、変更なし）
 
 ```ts
 interface StudentRepository {
@@ -107,30 +75,25 @@ interface StudentRepository {
 }
 ```
 
-- 具象実装 `FirebaseStudentRepository`（`infrastructure/firebase/`）は実装済み。Firestoreの `students/{studentId}` コレクションに `{ manaQuality: {order, chaos, amount}, house }` の形で永続化する（詳細は `tasklist.md` 7番参照）。復元時は `StudentAggregate.reconstruct(id, manaQuality, house)` を使い、`decideHouse()` のバリデーションを再実行しない（永続化データは既に確定済みの不変条件を満たしている前提）。
+- 具象実装 `FirebaseStudentRepository`（`infrastructure/firebase/`）。Firestoreの `students/{studentId}` コレクションに `{ house }` の形で永続化する（`manaQuality` フィールドは廃止）。復元時は `house` を `isHouse` で検証し、`StudentAggregate.create(id, house)` で復元する。
 
 ## ユースケース
 
-### AssignHouse
+### EnrollStudent（変更: 選ばれた学舎を直接受け取り、確定まで1ステップで行う）
 
 ```ts
-class AssignHouse {
+class EnrollStudent {
   constructor(studentRepository: StudentRepository);
-  execute(studentId: StudentId): Promise<House>;
+  execute(studentId: StudentId, house: House): Promise<StudentAggregate>;
 }
 ```
 
-フロー: `studentRepository.findById` → 存在しなければ例外 → `student.decideHouse()` → `studentRepository.save(student)` → 判定結果の `House` を返す。
+フロー: `StudentAggregate.create(studentId, house)` → `studentRepository.save(aggregate)` → 生成した集約を返す。
 
-## テスト不変条件チェックリスト（未着手）
+旧 `AssignHouse` ユースケース（`usecase/AssignHouse/`）は判定ステップが不要になったため削除する。
 
-現時点でユニットテストは存在しない。品質ゲート（`CLAUDE.md` の開発の掟）を満たすため、少なくとも以下をテストで証明する必要がある:
+## テスト不変条件チェックリスト
 
-- [ ] `ManaQuality.create` は `order` / `chaos` / `amount` のいずれかが `0未満` または `100超` のとき例外を投げる。
-- [ ] `ManaQuality.create` は範囲内（境界値 `0` と `100` を含む）であれば正常に生成できる。
 - [ ] `StudentId.fromString("")` および空白のみの文字列は例外を投げる。
-- [ ] `order >= chaos` の `ManaQuality` を持つ生徒は `decideHouse()` で必ず `RegiusCardis` に配属される（境界値 `order === chaos` を含む）。
-- [ ] `chaos > order` の `ManaQuality` を持つ生徒は `decideHouse()` で必ず `RoseSleep` に配属される。
-- [ ] `decideHouse()` 実行後、`StudentAggregate.house` が確定した学舎と一致する。
-- [ ] `AssignHouse.execute` は存在しない `StudentId` に対して例外を投げる。
-- [ ] `AssignHouse.execute` は判定後に `studentRepository.save` を1回呼び出す。
+- [ ] `StudentAggregate.create(id, "RegiusCardis")` / `create(id, "RoseSleep")` のそれぞれで `house` が選んだ値と一致する。
+- [ ] `EnrollStudent.execute(studentId, house)` は選んだ `house` を持つ `StudentAggregate` を生成し、`studentRepository.save` を1回呼び出し、その集約を返す。

@@ -8,21 +8,20 @@
 
 ## 1. 学舎割当コンテキスト (House Assignment Context)
 
-中心ドメイン。生徒の入学時に魔力資質を鑑定し、配属学舎を判定する。
+中心ドメイン。生徒の入学時に、各学舎の特性を提示したうえで、生徒自身がどちらの学舎に入りたいかを選択する。
+
+> **変更履歴**: 初版では「魔力資質（ManaQuality）を数値で入力し、`HouseAssignmentSpecification` が自動判定する」という仕様だったが、「数値入力ではなく、各学舎の特性を選択肢として提示し、生徒自身が選ぶ」方式への変更をヒアリングのうえ決定した（詳細は `specs/house-assignment.md` 参照）。これに伴い `ManaQuality` と `HouseAssignmentSpecification` は廃止した。生徒が選んだ学舎は常にそのまま確定し、人数上限などの例外条件は無い。
 
 | 用語 | 分類 | 定義 | 実装 |
 |---|---|---|---|
-| **Student（生徒）** | エンティティ | 一意の識別子を持ち、魔力資質と配属学舎の状態を持つ生徒本体。配属前は `house` が `null`。 | `domain/models/Student.ts` |
+| **Student（生徒）** | エンティティ | 一意の識別子と、入学時に自ら選んだ配属学舎を持つ生徒本体。学舎は生成時に必ず確定しており、`null` になることはない。 | `domain/models/Student.ts` |
 | **StudentId（生徒ID）** | 値オブジェクト | 生徒を一意に識別する不変の文字列ID。空文字は許容しない。 | `domain/models/StudentId.ts` |
-| **ManaQuality（魔力資質）** | 値オブジェクト | 生徒が持つ魔力の性質を表す不変オブジェクト。`order`（秩序度）・`chaos`（混沌度）・`amount`（魔力量）の3パラメータからなり、各値は 0〜100 の範囲でなければならない。 | `domain/models/ManaQuality.ts` |
 | **House（学舎）** | 値オブジェクト | 生徒の配属先を表す列挙値。`RegiusCardis`（レギウス・カルディス）または `RoseSleep`（ローズスリープ）のいずれか。 | `domain/models/House.ts` |
-| **RegiusCardis（レギウス・カルディス）** | Houseの値 | 規律正しい生徒が属する学舎。秩序度が混沌度以上（`order >= chaos`）の生徒が配属される。 | `domain/specs/HouseAssignmentSpecification.ts` |
-| **RoseSleep（ローズスリープ）** | Houseの値 | ミステリアスな個性を伸ばす学舎。混沌度が秩序度を上回る（`chaos > order`）生徒が配属される。 | `domain/specs/HouseAssignmentSpecification.ts` |
-| **StudentAggregate（生徒集約）** | 集約ルート | `Student` エンティティをルートとし、魔力資質の評価から学舎への配属（状態遷移）までの不変条件を一手に防衛する境界。 | `domain/models/StudentAggregate.ts` |
-| **HouseAssignmentSpecification（学舎配属仕様）** | 仕様 | ある `ManaQuality` がどの学舎の条件を満たすかを判定する純粋なドメインルール。`house` と `isSatisfiedBy(manaQuality)` を持つ。 | `domain/specs/HouseAssignmentSpecification.ts` |
-| **学舎配属判定（decideHouse）** | ドメイン操作 | `StudentAggregate` が自身の `ManaQuality` を `HouseAssignmentSpecification` 群に照合し、合致した学舎を生徒に割り当てるふるまい。合致する仕様が1つもない場合はエラーとする。 | `StudentAggregate.decideHouse()` |
+| **RegiusCardis（レギウス・カルディス）** | Houseの値 | 規律正しさを特性とする学舎。生徒がこの特性を気に入って選んだ場合に配属される（判定条件はない）。 | `domain/models/House.ts` |
+| **RoseSleep（ローズスリープ）** | Houseの値 | ミステリアスな個性を伸ばすことを特性とする学舎。生徒がこの特性を気に入って選んだ場合に配属される（判定条件はない）。 | `domain/models/House.ts` |
+| **StudentAggregate（生徒集約）** | 集約ルート | `Student` エンティティをルートとする境界。生徒が選んだ学舎をそのまま確定させて生成する。 | `domain/models/StudentAggregate.ts` |
 | **StudentRepository（生徒リポジトリ）** | リポジトリ（インターフェース） | `StudentAggregate` の永続化を抽象化する境界。ID検索 (`findById`) と保存 (`save`) を提供。 | `domain/repositories/StudentRepository.ts` |
-| **AssignHouse（学舎配属ユースケース）** | ユースケース | 生徒IDを受け取り、生徒を取得→学舎判定→保存までを実行するアプリケーションサービス。 | `usecase/AssignHouse/AssignHouse.ts` |
+| **EnrollStudent（入学ユースケース）** | ユースケース | 生徒ID・選んだ学舎を受け取り、生徒を選んだ学舎で確定させて保存するアプリケーションサービス。 | `usecase/EnrollStudent/EnrollStudent.ts` |
 
 ---
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { ManaQuality } from "../../domain/models/ManaQuality";
 import type { StudentAggregate } from "../../domain/models/StudentAggregate";
 import { StudentId } from "../../domain/models/StudentId";
 import type { StudentRepository } from "../../domain/repositories/StudentRepository";
@@ -20,14 +19,14 @@ function fakeRepository(): StudentRepository & { saved: StudentAggregate[] } {
 }
 
 describe("EnrollStudent", () => {
-  it("creates a StudentAggregate and saves it", async () => {
+  it("creates a StudentAggregate with the chosen house and saves it", async () => {
     const repository = fakeRepository();
     const usecase = new EnrollStudent(repository);
-    const manaQuality = ManaQuality.create({ order: 60, chaos: 20, amount: 50 });
 
-    const aggregate = await usecase.execute(StudentId.fromString("student-1"), manaQuality);
+    const aggregate = await usecase.execute(StudentId.fromString("student-1"), "RoseSleep");
 
     expect(aggregate.id.toString()).toBe("student-1");
+    expect(aggregate.house).toBe("RoseSleep");
     expect(repository.saved).toHaveLength(1);
     expect(repository.saved[0]).toBe(aggregate);
   });

@@ -130,3 +130,19 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 ## 8. 学園案内コンテキスト（回帰防止）
 
 - [ ] `data-theme` 属性への書き込みが `ThemeProvider.tsx` 以外に存在しないことを確認する lint ルール or CI チェックの検討（任意）。
+
+## 9. 学舎割当コンテキスト（鑑定UXの変更: 数値入力→選択制）
+
+`specs/house-assignment.md` の「意思決定の経緯（第2回ヒアリング）」節でヒアリング済み。承認後に着手する。
+
+- [ ] `domain/models/ManaQuality.ts` を削除する
+- [ ] `domain/specs/HouseAssignmentSpecification.ts` を削除する
+- [ ] `domain/models/Student.ts` を更新（`manaQuality` を削除、`house: House` を必須の構築時パラメータに変更、`assignTo` を削除）＋テスト
+- [ ] `domain/models/StudentAggregate.ts` を更新（`create(id, house)` に変更、`decideHouse()` / `reconstruct` / `manaQuality` ゲッターを削除）＋ `StudentAggregate.test.ts` を更新
+- [ ] `usecase/AssignHouse/` を削除する
+- [ ] `usecase/EnrollStudent/EnrollStudent.ts` を更新（`execute(studentId, house)` に変更）＋ `EnrollStudent.test.ts` を更新
+- [ ] `infrastructure/firebase/FirebaseStudentRepository.ts` を更新（Firestoreドキュメントを `{ house }` のみに変更、`manaQuality` フィールドを廃止）
+- [ ] `src/stores/useAcademyStore.ts` を更新（`enroll` が `manaQuality` の代わりに選ばれた `house` を受け取るように変更、`AssignHouse` usecaseの呼び出しを削除）
+- [ ] `src/app/page.tsx` を更新（秩序度・混沌度・魔力量のスライダーを削除し、各学舎の特性を選択肢として提示するUIに変更）
+- [ ] `README.md` / `CLAUDE.md` の該当箇所（学舎割当コンテキストの説明、ディレクトリ構造例に `usecase/AssignHouse/` が出てくる箇所など）を更新
+- [ ] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認

@@ -1,10 +1,8 @@
 import { create } from "zustand";
 
 import type { House } from "@/contexts/house-assignment/domain/models/House";
-import { ManaQuality, type ManaQualityProps } from "@/contexts/house-assignment/domain/models/ManaQuality";
 import { StudentId } from "@/contexts/house-assignment/domain/models/StudentId";
 import { InMemoryStudentRepository } from "@/contexts/house-assignment/infrastructure/memory/InMemoryStudentRepository";
-import { AssignHouse } from "@/contexts/house-assignment/usecase/AssignHouse/AssignHouse";
 import { EnrollStudent } from "@/contexts/house-assignment/usecase/EnrollStudent/EnrollStudent";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import { InMemoryCultivationProgressRepository } from "@/contexts/mana-cultivation/infrastructure/memory/InMemoryCultivationProgressRepository";
@@ -29,7 +27,6 @@ const upcomingExamRepository = new InMemoryUpcomingExamRepository(upcomingExams)
 const cultivationProgressRepository = new InMemoryCultivationProgressRepository();
 
 const enrollStudent = new EnrollStudent(studentRepository);
-const assignHouse = new AssignHouse(studentRepository);
 const startCultivation = new StartCultivation(cultivationProgressRepository);
 const completeLearningUnit = new CompleteLearningUnit(
   cultivationProgressRepository,
@@ -55,7 +52,7 @@ type AcademyState = {
   overview: CultivationOverview | null;
   isLoading: boolean;
   error: string | null;
-  enroll: (manaQuality: ManaQualityProps, grade: Grade) => Promise<void>;
+  enroll: (house: House, grade: Grade) => Promise<void>;
   refreshOverview: () => Promise<void>;
   completeUnit: (learningUnitId: string) => Promise<void>;
   recordAttemptFor: (learningUnitId: string, isCorrect: boolean) => Promise<void>;
@@ -70,12 +67,10 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  enroll: async (manaQualityProps, grade) => {
+  enroll: async (house, grade) => {
     set({ isLoading: true, error: null });
     try {
-      const manaQuality = ManaQuality.create(manaQualityProps);
-      await enrollStudent.execute(DEMO_STUDENT_ID, manaQuality);
-      const house = await assignHouse.execute(DEMO_STUDENT_ID);
+      await enrollStudent.execute(DEMO_STUDENT_ID, house);
       await startCultivation.execute(DEMO_STUDENT_ID, grade);
       set({ house, isEnrolled: true });
       await get().refreshOverview();

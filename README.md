@@ -30,7 +30,7 @@
 ドメイン駆動設計（DDD）に基づき、システムを以下の3つの独立したコンテキストに分離して開発します。
 
 1. **学舎割当コンテキスト (House Assignment Context)**
-   * 生徒の入学、魔力資質の鑑定、および配属学舎（レギウス／ローズ）の判定ルールを司る中心ドメイン。
+   * 生徒の入学時に、各学舎（レギウス／ローズ）の特性を提示し、生徒自身がどちらに入りたいかを選択する中心ドメイン。
 2. **魔力修練コンテキスト (Mana Cultivation Context)**
    * 配属後の生徒の魔力パラメータの成長、修練の進捗状況を管理するドメイン。
    * 中学2年生の定期テスト対策・英検対策・小学6年生の中学受験対策といった、学年・試験種別ごとに異なるカリキュラム（教材・出題範囲・難易度等）の多様性は、新たなコンテキストを増やすのではなく、このコンテキスト内のモデリングで吸収する。
@@ -46,14 +46,11 @@
 ### ドメイン層の構成要素
 * **値オブジェクト (Value Objects)**:
   * `StudentId`: 生徒を一意に識別する不変の識別子。
-  * `ManaQuality`: 魔力パラメータ（秩序度・混沌度・魔力量など）を表す不変オブジェクト。
-  * `House`: 配属先の学舎（`RegiusCardis` または `RoseSleep`）を表現する列挙値/値オブジェクト。
+  * `House`: 配属先の学舎（`RegiusCardis` または `RoseSleep`）を表現する列挙値/値オブジェクト。生徒が選んだ値がそのまま使われる。
 * **エンティティ (Entities)**:
-  * `Student`: 識別を持ち、状態が変化する生徒オブジェクト。
+  * `Student`: 識別と、入学時に自ら選んだ配属学舎を持つ生徒オブジェクト。
 * **集約ルート (Aggregate Roots)**:
-  * `StudentAggregate`: 生徒エンティティをルートとし、魔力資質や学舎の状態遷移に関する不変条件（ビジネスルール）を一手に防衛する境界。
-* **仕様 (Specifications)**:
-  * `HouseAssignmentSpecification`: 生徒の魔力資質を評価し、どの学舎に属するべきかを判定する純粋なドメインルール・バリネーター。
+  * `StudentAggregate`: 生徒エンティティをルートとし、生徒が選んだ学舎をそのまま確定させて生成する境界。判定ロジックは持たない。
 
 ---
 
@@ -72,11 +69,10 @@ src/
 └── contexts/                    # 境界づけられたコンテキスト別の実装
     └── house-assignment/        # 学舎割当コンテキスト
         ├── domain/              # ドメイン層（純粋なTypeScript / 外部依存ゼロ）
-        │   ├── models/          # Student, ManaQuality などのEntity / Value Object
-        │   ├── specs/           # HouseAssignmentSpecification (仕様パターン)
+        │   ├── models/          # Student, House などのEntity / Value Object
         │   └── repositories/    # StudentRepository (インターフェース定義)
         ├── usecase/             # ユースケース層（アプリケーションサービス）
-        │   └── AssignHouse/     # 学舎判定・配属を実行するシナリオ
+        │   └── EnrollStudent/   # 生徒が選んだ学舎を確定させて入学させるシナリオ
         └── infrastructure/      # インフラストラクチャ層
             └── firebase/        # Firebaseクライアント・Repositoryの具象実装
 
@@ -92,7 +88,7 @@ public/
 本プロジェクトのUI/UXは、専用の [Advisaria Magica Academy Design System](https://claude.ai/artifact/61d25pEcPEwJhNmt7tpmS4) を単一の真実源 (Single Source of Truth) とします。トークン・コンポーネント仕様に変更があった場合は、まずデザインシステム側を更新し、そこから `src/styles/tokens.css` やコンポーネント実装へ反映してください。
 
 * **トークン**: `tokens.json` に色（寮別）・タイポグラフィ・余白・角丸を定義。これを `src/styles/tokens.css` のCSS変数、または Tailwind の `theme.extend` に変換して取り込む。
-* **寮テーマ切り替え**: ルート要素（または任意の部分木）の `data-theme="regiuscardis" | "rosesleep"` でトーン＆マナーを切り替える。これは戦術的DDDモデルの `House` 値オブジェクト（`RegiusCardis` / `RoseSleep`）とそのまま対応し、学舎割当コンテキストの判定結果を `components/theme/` の ThemeProvider が属性値としてそのまま反映する。
+* **寮テーマ切り替え**: ルート要素（または任意の部分木）の `data-theme="regiuscardis" | "rosesleep"` でトーン＆マナーを切り替える。これは戦術的DDDモデルの `House` 値オブジェクト（`RegiusCardis` / `RoseSleep`）とそのまま対応し、学舎割当コンテキストで生徒が選んだ学舎を `components/theme/` の ThemeProvider が属性値としてそのまま反映する。
 * **意味トークン**: UIは `house-bg` / `house-text` / `house-primary` / `house-on-primary` / `house-accent` / `house-focus` の意味トークンで塗る。寮固有の意匠を描く場合のみ `color-regius-*` / `color-rose-*` を直接使用する。
 * **タイポグラフィ**: 見出し `display`（Cinzel, Google Fonts）、本文 `base`（Helvetica Neue / Arial）。Cinzelは和文を持たないため、和文は添える程度に留め本文はシステムフォントにフォールバックする。
 * **コンポーネント**: `GrimoireCard`（魔導書風カード）、`MagicalToggle`（魔法トグル）をデザインシステムのガイドライン（各 `README.md` / `preview.html`）に基づき `src/components/ui/` 配下に React + TypeScript で実装する。`prefers-reduced-motion` 時は光・波紋・発光の演出を停止すること。
@@ -113,5 +109,5 @@ public/
    ```
    上記コマンドでエラーがゼロであることをコミットの絶対条件とする。
 3. **テストの防衛**:
-   ドメインの不変条件（例：特定の魔力数値を持つ生徒は必ずレギウスに配属される等）は、すべてユニットテストによって証明されなければならない。
+   ドメインの不変条件（例：ある学習ユニットを完了すると対応科目の能力値が必ず上昇する等）は、すべてユニットテストによって証明されなければならない。
 

@@ -2,8 +2,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 import { firestore } from "@/lib/firebase";
 
-import { isHouse, type House } from "../../domain/models/House";
-import { ManaQuality } from "../../domain/models/ManaQuality";
+import { isHouse } from "../../domain/models/House";
 import { StudentAggregate } from "../../domain/models/StudentAggregate";
 import type { StudentId } from "../../domain/models/StudentId";
 import type { StudentRepository } from "../../domain/repositories/StudentRepository";
@@ -11,8 +10,7 @@ import type { StudentRepository } from "../../domain/repositories/StudentReposit
 const COLLECTION = "students";
 
 type StudentDocument = {
-  manaQuality: { order: number; chaos: number; amount: number };
-  house: string | null;
+  house: string;
 };
 
 export class FirebaseStudentRepository implements StudentRepository {
@@ -23,20 +21,14 @@ export class FirebaseStudentRepository implements StudentRepository {
     }
 
     const data = snapshot.data() as StudentDocument;
-    const manaQuality = ManaQuality.create(data.manaQuality);
-    const house: House | null = data.house && isHouse(data.house) ? data.house : null;
-    return StudentAggregate.reconstruct(id, manaQuality, house);
+    if (!isHouse(data.house)) {
+      throw new Error(`Invalid house in students/${id.toString()}: ${data.house}`);
+    }
+    return StudentAggregate.create(id, data.house);
   }
 
   async save(student: StudentAggregate): Promise<void> {
-    const data: StudentDocument = {
-      manaQuality: {
-        order: student.manaQuality.order,
-        chaos: student.manaQuality.chaos,
-        amount: student.manaQuality.amount,
-      },
-      house: student.house,
-    };
+    const data: StudentDocument = { house: student.house };
     await setDoc(doc(firestore, COLLECTION, student.id.toString()), data);
   }
 }
