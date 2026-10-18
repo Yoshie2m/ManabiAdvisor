@@ -1,4 +1,4 @@
-import { doc, getDoc, Timestamp } from "firebase/firestore";
+import { doc, getDoc, Timestamp } from "firebase/firestore/lite";
 
 import { firestore } from "@/lib/firebase";
 

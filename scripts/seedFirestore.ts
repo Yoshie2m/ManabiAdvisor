@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from "firebase/app";
-import { doc, getFirestore, setDoc, Timestamp } from "firebase/firestore";
+import { doc, getFirestore, setDoc, Timestamp } from "firebase/firestore/lite";
 
 import {
   curricula,

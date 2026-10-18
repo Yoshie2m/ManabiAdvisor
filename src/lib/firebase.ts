@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore/lite";
 
 // Firebase's client config is not a secret; access is enforced by Firestore
 // Security Rules, not by hiding these values. See .env.local.example.
