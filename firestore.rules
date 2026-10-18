@@ -18,14 +18,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Per-student data (students/cultivationProgress): open for now because
-    // there is no Firebase Authentication yet (see docs/domain/tasklist.md).
-    // Must be scoped to `request.auth.uid == studentId` once auth exists.
+    // Per-student data (students/cultivationProgress): StudentId is the
+    // Firebase Auth uid (see docs/domain/glossary.md), so each student can
+    // only read/write their own documents.
     match /students/{studentId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null && request.auth.uid == studentId;
     }
     match /cultivationProgress/{studentId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null && request.auth.uid == studentId;
     }
 
     // Deny everything else by default.

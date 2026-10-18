@@ -148,3 +148,20 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/app/page.tsx` を更新（秩序度・混沌度・魔力量のスライダーを削除し、各学舎の特性を選択肢として提示するUIに変更）
 - [x] `README.md` / `CLAUDE.md` の該当箇所を更新
 - [x] `npx tsc --noEmit` / `npm test`（22ファイル・83テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 10. Firebase Authentication導入（複数生徒対応）✅実装済み
+
+`glossary.md` の「認証について」節でヒアリング済み。方針: メール/パスワード認証、`StudentId = Firebase Authのuid`、ログイン後は既存`StudentAggregate`の有無で分岐。新しいドメインモデルは伴わない（`StudentId`の型・不変条件は変更なし）ため、`specs/*.md` への新規仕様追加はせず、本タスクリストのみで進めた。
+
+- [x] Firebaseコンソールで Authentication の「メール/パスワード」プロバイダを有効化した
+- [x] `src/lib/auth.ts` を新規作成（`watchAuthState`、`signUp`、`signIn`、`signOutUser` の薄いラッパー）
+- [x] `src/stores/useAcademyStore.ts` を更新:
+  - [x] 固定の `DEMO_STUDENT_ID` を削除し、認証中の `uid` から都度 `StudentId` を導出する（`currentStudentId`）
+  - [x] `authUid` / `isAuthLoading` 状態を追加
+  - [x] `initialize()` アクションを追加（`watchAuthState` を購読し、ログイン中なら `studentRepository.findById` で既存登録の有無を確認して `house` / `isEnrolled` / `overview` を復元、未ログインなら全状態をリセット）
+  - [x] `signUp` / `signIn` / `signOutUser` アクションを追加
+- [x] `src/components/AuthInitializer.tsx` を新規作成し、`src/app/layout.tsx` に配置した
+- [x] `src/app/page.tsx` を更新: 未ログイン時はログイン/サインアップフォーム、ログイン済み・未登録なら学舎選択、ログイン済み・登録済みなら修練場への案内を表示する3分岐にした
+- [x] `firestore.rules` を更新・デプロイ: `students/{studentId}` / `cultivationProgress/{studentId}` を `allow read, write: if request.auth != null && request.auth.uid == studentId;` に変更
+- [x] `firebase/auth` のサインアップ/ログインをNodeスクリプトで動作確認、Cloudflare Workers上（`wrangler dev`）でもエラー無く200応答することを確認した（`firebase/firestore`と異なり`firebase/auth`はprotobufjsのcodegenに依存せず、`/lite`への切り替えは不要だった）
+- [x] `npx tsc --noEmit` / `npm test`（22ファイル・83テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

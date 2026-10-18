@@ -15,13 +15,15 @@
 | 用語 | 分類 | 定義 | 実装 |
 |---|---|---|---|
 | **Student（生徒）** | エンティティ | 一意の識別子と、入学時に自ら選んだ配属学舎を持つ生徒本体。学舎は生成時に必ず確定しており、`null` になることはない。 | `domain/models/Student.ts` |
-| **StudentId（生徒ID）** | 値オブジェクト | 生徒を一意に識別する不変の文字列ID。空文字は許容しない。 | `domain/models/StudentId.ts` |
+| **StudentId（生徒ID）** | 値オブジェクト | 生徒を一意に識別する不変の文字列ID。空文字は許容しない。**Firebase Authenticationの導入により、この値はFirebase Authのuidと一致させる**（`StudentId.fromString(authUser.uid)`）。生徒IDとAuthユーザーの対応表のような別マッピングは持たない。型・不変条件そのものに変更はない。 | `domain/models/StudentId.ts` |
 | **House（学舎）** | 値オブジェクト | 生徒の配属先を表す列挙値。`RegiusCardis`（レギウス・カルディス）または `RoseSleep`（ローズスリープ）のいずれか。 | `domain/models/House.ts` |
 | **RegiusCardis（レギウス・カルディス）** | Houseの値 | 規律正しさを特性とする学舎。生徒がこの特性を気に入って選んだ場合に配属される（判定条件はない）。 | `domain/models/House.ts` |
 | **RoseSleep（ローズスリープ）** | Houseの値 | ミステリアスな個性を伸ばすことを特性とする学舎。生徒がこの特性を気に入って選んだ場合に配属される（判定条件はない）。 | `domain/models/House.ts` |
 | **StudentAggregate（生徒集約）** | 集約ルート | `Student` エンティティをルートとする境界。生徒が選んだ学舎をそのまま確定させて生成する。 | `domain/models/StudentAggregate.ts` |
 | **StudentRepository（生徒リポジトリ）** | リポジトリ（インターフェース） | `StudentAggregate` の永続化を抽象化する境界。ID検索 (`findById`) と保存 (`save`) を提供。 | `domain/repositories/StudentRepository.ts` |
 | **EnrollStudent（入学ユースケース）** | ユースケース | 生徒ID・選んだ学舎を受け取り、生徒を選んだ学舎で確定させて保存するアプリケーションサービス。 | `usecase/EnrollStudent/EnrollStudent.ts` |
+
+> **認証について**: ログイン・サインアップ（Firebase Authentication）自体は、どの境界づけられたコンテキストにも属さないビジネスルールを持たない技術的関心事として扱う。`src/lib/auth.ts` に薄いラッパーを置き、プレゼンテーション層（`useAcademyStore.ts` / `src/app/page.tsx`）がそこから得た `uid` を `StudentId` に変換してドメイン層・ユースケース層へ渡す。ドメイン層（`StudentId` 自体の型定義など）には一切変更を加えない。
 
 ---
 

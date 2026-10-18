@@ -16,6 +16,12 @@ import { GetCultivationOverview } from "@/contexts/mana-cultivation/usecase/GetC
 import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferMockExamMission/OfferMockExamMission";
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
 import { StartCultivation } from "@/contexts/mana-cultivation/usecase/StartCultivation/StartCultivation";
+import {
+  signIn as firebaseSignIn,
+  signOutUser as firebaseSignOut,
+  signUp as firebaseSignUp,
+  watchAuthState,
+} from "@/lib/auth";
 
 // --- 構成（Composition Root）: Firebase実装を束ねる。 ---
 const studentRepository = new FirebaseStudentRepository();
@@ -41,15 +47,28 @@ const getCultivationOverview = new GetCultivationOverview(
   upcomingExamRepository,
 );
 
-// 動作確認用: ログイン機構がまだ無いため、生徒は1人（固定ID）として扱う。
-const DEMO_STUDENT_ID = StudentId.fromString("demo-student");
+function currentStudentId(authUid: string | null): StudentId {
+  if (!authUid) {
+    throw new Error("ログインしていません");
+  }
+  return StudentId.fromString(authUid);
+}
+
+// initialize() はAuthInitializerコンポーネントから一度だけ呼ばれる想定。
+let hasInitialized = false;
 
 type AcademyState = {
+  authUid: string | null;
+  isAuthLoading: boolean;
   house: House | null;
   isEnrolled: boolean;
   overview: CultivationOverview | null;
   isLoading: boolean;
   error: string | null;
+  initialize: () => void;
+  signUp: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOutUser: () => Promise<void>;
   enroll: (house: House, grade: Grade) => Promise<void>;
   refreshOverview: () => Promise<void>;
   completeUnit: (learningUnitId: string) => Promise<void>;
@@ -59,17 +78,73 @@ type AcademyState = {
 };
 
 export const useAcademyStore = create<AcademyState>((set, get) => ({
+  authUid: null,
+  isAuthLoading: true,
   house: null,
   isEnrolled: false,
   overview: null,
   isLoading: false,
   error: null,
 
+  initialize: () => {
+    if (hasInitialized) {
+      return;
+    }
+    hasInitialized = true;
+
+    watchAuthState(async (user) => {
+      if (!user) {
+        set({ authUid: null, isAuthLoading: false, house: null, isEnrolled: false, overview: null });
+        return;
+      }
+
+      set({ authUid: user.uid, isAuthLoading: false, error: null });
+      try {
+        const existing = await studentRepository.findById(StudentId.fromString(user.uid));
+        if (existing) {
+          set({ house: existing.house, isEnrolled: true });
+          await get().refreshOverview();
+        } else {
+          set({ house: null, isEnrolled: false, overview: null });
+        }
+      } catch (error) {
+        set({ error: error instanceof Error ? error.message : String(error) });
+      }
+    });
+  },
+
+  signUp: async (email, password) => {
+    set({ isLoading: true, error: null });
+    try {
+      await firebaseSignUp(email, password);
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  signIn: async (email, password) => {
+    set({ isLoading: true, error: null });
+    try {
+      await firebaseSignIn(email, password);
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  signOutUser: async () => {
+    await firebaseSignOut();
+  },
+
   enroll: async (house, grade) => {
     set({ isLoading: true, error: null });
     try {
-      await enrollStudent.execute(DEMO_STUDENT_ID, house);
-      await startCultivation.execute(DEMO_STUDENT_ID, grade);
+      const studentId = currentStudentId(get().authUid);
+      await enrollStudent.execute(studentId, house);
+      await startCultivation.execute(studentId, grade);
       set({ house, isEnrolled: true });
       await get().refreshOverview();
     } catch (error) {
@@ -81,7 +156,8 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
   refreshOverview: async () => {
     try {
-      const overview = await getCultivationOverview.execute(DEMO_STUDENT_ID);
+      const studentId = currentStudentId(get().authUid);
+      const overview = await getCultivationOverview.execute(studentId);
       set({ overview, error: null });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
@@ -90,7 +166,8 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
   completeUnit: async (learningUnitId) => {
     try {
-      await completeLearningUnit.execute(DEMO_STUDENT_ID, learningUnitId);
+      const studentId = currentStudentId(get().authUid);
+      await completeLearningUnit.execute(studentId, learningUnitId);
       await get().refreshOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
@@ -99,7 +176,8 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
   recordAttemptFor: async (learningUnitId, isCorrect) => {
     try {
-      await recordAttempt.execute(DEMO_STUDENT_ID, learningUnitId, isCorrect);
+      const studentId = currentStudentId(get().authUid);
+      await recordAttempt.execute(studentId, learningUnitId, isCorrect);
       await get().refreshOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
@@ -108,7 +186,8 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
   assignDailyMission: async () => {
     try {
-      await generateDailyMission.execute(DEMO_STUDENT_ID, `daily-${Date.now()}`);
+      const studentId = currentStudentId(get().authUid);
+      await generateDailyMission.execute(studentId, `daily-${Date.now()}`);
       await get().refreshOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
@@ -117,7 +196,8 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
   offerMockExam: async () => {
     try {
-      await offerMockExamMission.execute(DEMO_STUDENT_ID, `mock-${Date.now()}`);
+      const studentId = currentStudentId(get().authUid);
+      await offerMockExamMission.execute(studentId, `mock-${Date.now()}`);
       await get().refreshOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
