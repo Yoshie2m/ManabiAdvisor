@@ -2,14 +2,13 @@ import { create } from "zustand";
 
 import type { House } from "@/contexts/house-assignment/domain/models/House";
 import { StudentId } from "@/contexts/house-assignment/domain/models/StudentId";
-import { InMemoryStudentRepository } from "@/contexts/house-assignment/infrastructure/memory/InMemoryStudentRepository";
+import { FirebaseStudentRepository } from "@/contexts/house-assignment/infrastructure/firebase/FirebaseStudentRepository";
 import { EnrollStudent } from "@/contexts/house-assignment/usecase/EnrollStudent/EnrollStudent";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
-import { InMemoryCultivationProgressRepository } from "@/contexts/mana-cultivation/infrastructure/memory/InMemoryCultivationProgressRepository";
-import { InMemoryCurriculumRepository } from "@/contexts/mana-cultivation/infrastructure/memory/InMemoryCurriculumRepository";
-import { InMemoryLearningUnitRepository } from "@/contexts/mana-cultivation/infrastructure/memory/InMemoryLearningUnitRepository";
-import { InMemoryUpcomingExamRepository } from "@/contexts/mana-cultivation/infrastructure/memory/InMemoryUpcomingExamRepository";
-import { curricula, learningUnits, upcomingExams } from "@/contexts/mana-cultivation/infrastructure/memory/seedData";
+import { FirebaseCultivationProgressRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCultivationProgressRepository";
+import { FirebaseCurriculumRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCurriculumRepository";
+import { FirebaseLearningUnitRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseLearningUnitRepository";
+import { FirebaseUpcomingExamRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseUpcomingExamRepository";
 import { CompleteLearningUnit } from "@/contexts/mana-cultivation/usecase/CompleteLearningUnit/CompleteLearningUnit";
 import { GenerateDailyMission } from "@/contexts/mana-cultivation/usecase/GenerateDailyMission/GenerateDailyMission";
 import type { CultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
@@ -18,13 +17,12 @@ import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferM
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
 import { StartCultivation } from "@/contexts/mana-cultivation/usecase/StartCultivation/StartCultivation";
 
-// --- 構成（Composition Root）: 動作確認用にインメモリ実装を束ねる。 ---
-// DBと連携する際は、ここのリポジトリ実装をFirebase版に差し替えるだけでよい。
-const studentRepository = new InMemoryStudentRepository();
-const curriculumRepository = new InMemoryCurriculumRepository(curricula);
-const learningUnitRepository = new InMemoryLearningUnitRepository(learningUnits);
-const upcomingExamRepository = new InMemoryUpcomingExamRepository(upcomingExams);
-const cultivationProgressRepository = new InMemoryCultivationProgressRepository();
+// --- 構成（Composition Root）: Firebase実装を束ねる。 ---
+const studentRepository = new FirebaseStudentRepository();
+const curriculumRepository = new FirebaseCurriculumRepository();
+const learningUnitRepository = new FirebaseLearningUnitRepository();
+const upcomingExamRepository = new FirebaseUpcomingExamRepository();
+const cultivationProgressRepository = new FirebaseCultivationProgressRepository();
 
 const enrollStudent = new EnrollStudent(studentRepository);
 const startCultivation = new StartCultivation(cultivationProgressRepository);

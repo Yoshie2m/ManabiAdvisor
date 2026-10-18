@@ -53,7 +53,7 @@
 - [x] `domain/repositories/CurriculumRepository.ts` に `findById` を追加（`FirebaseCurriculumRepository` のスタブも追随）
 - [x] ユースケース新規作成（すべてテスト付き）: `house-assignment/usecase/EnrollStudent`、`mana-cultivation/usecase/{CompleteLearningUnit, RecordAttempt, GenerateDailyMission, OfferMockExamMission, GetCultivationOverview}`
 - [x] `infrastructure/memory/` にインメモリRepository実装を追加（`InMemoryStudentRepository` / `InMemoryCurriculumRepository` / `InMemoryLearningUnitRepository` / `InMemoryUpcomingExamRepository` / `InMemoryCultivationProgressRepository`）。**DB連携時はこれらをFirebase実装に差し替えるだけでよい設計**（usecaseはリポジトリの interface にのみ依存）。
-- [x] `mana-cultivation/infrastructure/memory/seedData.ts` に動作確認用の仮コンテンツ（カリキュラム5件・学習ユニット7件・次テスト1件）を用意。**本番のコンテンツ本体はFirestoreに格納する方針（`CLAUDE.md`）のため、DB連携時にこのファイルは廃止する。**
+- [x] `mana-cultivation/infrastructure/memory/seedData.ts` に動作確認用の仮コンテンツ（カリキュラム5件・学習ユニット7件・次テスト1件）を用意。**本番のコンテンツ本体はFirestoreに格納する方針（`CLAUDE.md`）のため、DB連携時にこのファイルは廃止する。**（※実際には、7番でこのファイルを`scripts/seedFirestore.ts`の入力データとして再利用する形になったため、廃止はせず残している。）
 - [x] `npx tsc --noEmit` / `npm test`（15ファイル・45テスト） / `npm run lint` を実行し、エラー0件を確認
 
 ### 未解決のまま残した論点（DB連携 or 本格運用前に要ヒアリング）
@@ -121,10 +121,12 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] Firestoreセキュリティルールを更新・デプロイ（マスタ3コレクションは読み取り公開・書き込み拒否、`students`/`cultivationProgress`は認証機構が無いため一時的に読み書き公開。認証導入後に`request.auth.uid == studentId`へ絞る必要あり）
 - [x] `npx tsc --noEmit` / `npm test`（22ファイル・84テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
 
+- [x] `useAcademyStore.ts` のComposition Root部分を `infrastructure/firebase/` の実装に切り替えた。InMemory実装（`InMemoryStudentRepository` 等5ファイル）はどこからも参照されなくなったため削除した。
+- [x] `scripts/seedFirestore.ts` を新規作成し、`infrastructure/memory/seedData.ts`（5カリキュラム・43学習ユニット・1次テスト）をFirestoreに投入した（`npm run seed`）。投入時のみ`firestore.rules`のマスタ3コレクションの書き込みを一時的に許可→投入後に元の拒否設定へ戻してデプロイ済み。`seedData.ts`自体はこのスクリプトの入力データとして残す。
+- [x] 開発サーバー・Firestoreへの読み取りクエリで、Firebase実装への切り替えが実際に動作することを確認した。
+
 ### 未着手（別途対応）
 
-- [ ] `useAcademyStore.ts` のComposition Root部分を `infrastructure/memory/` からFirebase実装に切り替える（現状はまだインメモリ実装が動いている）。
-- [ ] `curricula` / `learningUnits` / `upcomingExams` の実データをFirestoreに投入するシードスクリプト（現状は `infrastructure/memory/seedData.ts` のダミーデータのみ）。
 - [ ] Firebase Authentication導入、およびそれに伴う `students` / `cultivationProgress` のセキュリティルール強化。
 
 ## 8. 学園案内コンテキスト（回帰防止）

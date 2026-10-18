@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "seed": "node --env-file=.env.local --import tsx scripts/seedFirestore.ts"
   },
   "dependencies": {
     "firebase": "^13.0.0",
@@ -29,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.5",
     "wrangler": "^4.151.1"
