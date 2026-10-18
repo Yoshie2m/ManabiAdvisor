@@ -10,11 +10,11 @@
 
 `specs/house-assignment.md` の「テスト不変条件チェックリスト」をそのままユニットテスト化する。新規モデリングは不要、既存コードへのテスト追加のみ。
 
-- [ ] `ManaQuality` の生成バリデーション（範囲外で例外・境界値で成功）
-- [ ] `StudentId` の空文字バリデーション
-- [ ] `HouseAssignmentSpecification`（`regiusCardisSpecification` / `roseSleepSpecification`）の判定網羅性・排他性
-- [ ] `StudentAggregate.decideHouse()` の状態遷移（未配属→配属済み）
-- [ ] `AssignHouse` ユースケースのフロー（Not Found時の例外、成功時の `save` 呼び出し）
+> 9番（鑑定UXの変更）により `ManaQuality` / `HouseAssignmentSpecification` / `decideHouse()` / `AssignHouse` は削除済みのため、それらに関するテスト項目はここから除外した。
+
+- [ ] `StudentId` の空文字バリデーション（まだ専用テストが無い）
+- [x] `StudentAggregate.create(id, house)` が選んだ `house` をそのまま確定する（`StudentAggregate.test.ts`）
+- [x] `EnrollStudent` ユースケースのフロー（選んだ `house` での生成、`save` 呼び出し）（`EnrollStudent.test.ts`）
 
 ## 2. 学舎割当コンテキスト（インフラ実装）✅実装済み（詳細は7番参照）
 
@@ -114,7 +114,7 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
   - `curricula/{curriculumId}`: `{ examType, subject, title }`（マスタ、生徒に依存しない）
   - `learningUnits/{learningUnitId}`: `{ curriculumId, title, difficulty, questionType }`（マスタ）
   - `upcomingExams/{examType}`: `{ id, examType, scheduledDate, targetLearningUnitIds }`（マスタ。ドキュメントIDに`examType`の値を採用。`findByExamType`が試験種別ごとに最大1件という前提のため）
-  - `students/{studentId}`: `{ manaQuality: {order, chaos, amount}, house }`（学舎割当コンテキスト）
+  - `students/{studentId}`: `{ manaQuality: {order, chaos, amount}, house }`（学舎割当コンテキスト。※9番の鑑定UX変更により、現在は `{ house }` のみに変更されている）
   - `cultivationProgress/{studentId}`: `{ grade, abilities, understandingLevels, currentDailyMission, currentMockExamMission }`（魔力修練コンテキスト。`studentId`は学舎割当コンテキストのStudentIdを再利用）
 - [x] `FirebaseStudentRepository` / `FirebaseCurriculumRepository` / `FirebaseLearningUnitRepository`（新規） / `FirebaseUpcomingExamRepository`（新規） / `FirebaseCultivationProgressRepository`（新規）を実装
 - [x] 永続化のための復元ファクトリをドメイン層に追加（ビジネスルールの変更ではなく、インメモリ実装では不要だった「ドキュメント→ドメインオブジェクト」復元の技術的対応。いずれも既存の`create`相当のバリデーションを再実行しない、永続化データを信頼する設計）: `StudentAggregate.reconstruct` / `Curriculum.reconstruct` / `LearningUnit.reconstruct` / `Mission.reconstruct` / `CultivationProgress.reconstruct`。`StudentAggregate.manaQuality` / `CultivationProgress.getUnderstandingLevels()` ゲッターも追加（永続化のためのシリアライズに必要）。
@@ -131,18 +131,18 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 
 - [ ] `data-theme` 属性への書き込みが `ThemeProvider.tsx` 以外に存在しないことを確認する lint ルール or CI チェックの検討（任意）。
 
-## 9. 学舎割当コンテキスト（鑑定UXの変更: 数値入力→選択制）
+## 9. 学舎割当コンテキスト（鑑定UXの変更: 数値入力→選択制）✅実装済み
 
-`specs/house-assignment.md` の「意思決定の経緯（第2回ヒアリング）」節でヒアリング済み。承認後に着手する。
+`specs/house-assignment.md` の「意思決定の経緯（第2回ヒアリング）」節でヒアリング済み。
 
-- [ ] `domain/models/ManaQuality.ts` を削除する
-- [ ] `domain/specs/HouseAssignmentSpecification.ts` を削除する
-- [ ] `domain/models/Student.ts` を更新（`manaQuality` を削除、`house: House` を必須の構築時パラメータに変更、`assignTo` を削除）＋テスト
-- [ ] `domain/models/StudentAggregate.ts` を更新（`create(id, house)` に変更、`decideHouse()` / `reconstruct` / `manaQuality` ゲッターを削除）＋ `StudentAggregate.test.ts` を更新
-- [ ] `usecase/AssignHouse/` を削除する
-- [ ] `usecase/EnrollStudent/EnrollStudent.ts` を更新（`execute(studentId, house)` に変更）＋ `EnrollStudent.test.ts` を更新
-- [ ] `infrastructure/firebase/FirebaseStudentRepository.ts` を更新（Firestoreドキュメントを `{ house }` のみに変更、`manaQuality` フィールドを廃止）
-- [ ] `src/stores/useAcademyStore.ts` を更新（`enroll` が `manaQuality` の代わりに選ばれた `house` を受け取るように変更、`AssignHouse` usecaseの呼び出しを削除）
-- [ ] `src/app/page.tsx` を更新（秩序度・混沌度・魔力量のスライダーを削除し、各学舎の特性を選択肢として提示するUIに変更）
-- [ ] `README.md` / `CLAUDE.md` の該当箇所（学舎割当コンテキストの説明、ディレクトリ構造例に `usecase/AssignHouse/` が出てくる箇所など）を更新
-- [ ] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+- [x] `domain/models/ManaQuality.ts` を削除した
+- [x] `domain/specs/HouseAssignmentSpecification.ts` を削除した
+- [x] `domain/models/Student.ts` を更新（`manaQuality` を削除、`house: House` を必須の構築時パラメータに変更、`assignTo` を削除）
+- [x] `domain/models/StudentAggregate.ts` を更新（`create(id, house)` に変更、`decideHouse()` / `reconstruct` / `manaQuality` ゲッターを削除）＋ `StudentAggregate.test.ts` を更新
+- [x] `usecase/AssignHouse/` を削除した
+- [x] `usecase/EnrollStudent/EnrollStudent.ts` を更新（`execute(studentId, house)` に変更）＋ `EnrollStudent.test.ts` を更新
+- [x] `infrastructure/firebase/FirebaseStudentRepository.ts` を更新（Firestoreドキュメントを `{ house }` のみに変更、`manaQuality` フィールドを廃止）
+- [x] `src/stores/useAcademyStore.ts` を更新（`enroll` が `manaQuality` の代わりに選ばれた `house` を受け取るように変更、`AssignHouse` usecaseの呼び出しを削除）
+- [x] `src/app/page.tsx` を更新（秩序度・混沌度・魔力量のスライダーを削除し、各学舎の特性を選択肢として提示するUIに変更）
+- [x] `README.md` / `CLAUDE.md` の該当箇所を更新
+- [x] `npx tsc --noEmit` / `npm test`（22ファイル・83テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
