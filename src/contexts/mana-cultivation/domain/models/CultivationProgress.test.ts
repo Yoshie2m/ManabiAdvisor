@@ -5,6 +5,9 @@ import { SUBJECTS } from "./Subject";
 import { Curriculum } from "./Curriculum";
 import { CultivationProgress } from "./CultivationProgress";
 import { LearningUnit } from "./LearningUnit";
+import { Mission } from "./Mission";
+import { SubjectAbility } from "./SubjectAbility";
+import { UnderstandingLevel } from "./UnderstandingLevel";
 import { UpcomingExam } from "./UpcomingExam";
 
 function initiate() {
@@ -111,6 +114,59 @@ describe("CultivationProgress", () => {
       expect(mission.type).toBe("MockExam");
       expect(mission.targetLearningUnitIds).toEqual(["unit-1", "unit-2", "unit-3"]);
       expect(progress.getMockExamMission()).toBe(mission);
+    });
+  });
+
+  describe("getUnderstandingLevels", () => {
+    it("exposes every recorded understanding level, keyed by learningUnitId", () => {
+      const progress = initiate();
+      progress.recordAttempt("unit-1", true);
+
+      const levels = progress.getUnderstandingLevels();
+
+      expect(levels.size).toBe(1);
+      expect(levels.get("unit-1")?.correctCount).toBe(1);
+    });
+  });
+
+  describe("reconstruct", () => {
+    it("restores abilities, understanding levels, and missions without re-deriving them", () => {
+      const studentId = StudentId.fromString("student-1");
+      const abilities = new Map(SUBJECTS.map((subject) => [subject, SubjectAbility.create(subject, 42)]));
+      const understandingLevels = new Map([["unit-1", UnderstandingLevel.create("unit-1", 3, 4)]]);
+      const dailyMission = Mission.reconstruct("mission-daily", "Daily", ["unit-1"]);
+      const mockExamMission = Mission.reconstruct("mission-mock", "MockExam", ["unit-1", "unit-2"]);
+
+      const progress = CultivationProgress.reconstruct({
+        studentId,
+        grade: "Second",
+        abilities,
+        understandingLevels,
+        currentDailyMission: dailyMission,
+        currentMockExamMission: mockExamMission,
+      });
+
+      expect(progress.studentId).toBe(studentId);
+      expect(progress.grade).toBe("Second");
+      expect(progress.getAbility("Math").level).toBe(42);
+      expect(progress.getUnderstanding("unit-1").correctCount).toBe(3);
+      expect(progress.getCurrentDailyMission()).toBe(dailyMission);
+      expect(progress.getMockExamMission()).toBe(mockExamMission);
+    });
+
+    it("restores null missions as-is", () => {
+      const abilities = new Map(SUBJECTS.map((subject) => [subject, SubjectAbility.initial(subject)]));
+      const progress = CultivationProgress.reconstruct({
+        studentId: StudentId.fromString("student-1"),
+        grade: "Pre",
+        abilities,
+        understandingLevels: new Map(),
+        currentDailyMission: null,
+        currentMockExamMission: null,
+      });
+
+      expect(progress.getCurrentDailyMission()).toBeNull();
+      expect(progress.getMockExamMission()).toBeNull();
     });
   });
 });

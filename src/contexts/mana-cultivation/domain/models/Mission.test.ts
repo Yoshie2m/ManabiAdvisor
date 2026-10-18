@@ -21,4 +21,11 @@ describe("Mission", () => {
     expect(mission.type).toBe("MockExam");
     expect(mission.targetLearningUnitIds).toEqual(["unit-1", "unit-2", "unit-3"]);
   });
+
+  it("reconstruct() restores an arbitrary type/targets pair as-is", () => {
+    const mission = Mission.reconstruct("mission-3", "Daily", ["unit-9"]);
+
+    expect(mission.type).toBe("Daily");
+    expect(mission.targetLearningUnitIds).toEqual(["unit-9"]);
+  });
 });

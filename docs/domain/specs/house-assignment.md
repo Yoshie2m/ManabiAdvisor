@@ -107,7 +107,7 @@ interface StudentRepository {
 }
 ```
 
-- 具象実装 `FirebaseStudentRepository`（`infrastructure/firebase/`）は現時点で未実装（`findById` / `save` ともにスタブで例外を投げる）。Firestoreの `students` / `manaQualities` 相当のコレクション構成確定後に実装する。
+- 具象実装 `FirebaseStudentRepository`（`infrastructure/firebase/`）は実装済み。Firestoreの `students/{studentId}` コレクションに `{ manaQuality: {order, chaos, amount}, house }` の形で永続化する（詳細は `tasklist.md` 7番参照）。復元時は `StudentAggregate.reconstruct(id, manaQuality, house)` を使い、`decideHouse()` のバリデーションを再実行しない（永続化データは既に確定済みの不変条件を満たしている前提）。
 
 ## ユースケース
 

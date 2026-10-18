@@ -18,4 +18,9 @@ export class Mission {
   static offerMockExam(id: string, upcomingExam: UpcomingExam): Mission {
     return new Mission(id, "MockExam", upcomingExam.targetLearningUnitIds);
   }
+
+  // Trusts persisted invariants instead of re-deriving them from an UpcomingExam/focus unit.
+  static reconstruct(id: string, type: MissionType, targetLearningUnitIds: readonly string[]): Mission {
+    return new Mission(id, type, targetLearningUnitIds);
+  }
 }

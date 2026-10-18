@@ -2,8 +2,33 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Deny by default. Add scoped allow rules per collection as the
-    // Firestore schema for each bounded context is finalized.
+    // Content master data (curricula/learningUnits/upcomingExams): readable
+    // by anyone, written only via the Admin SDK or console — there is no
+    // client-side content authoring flow.
+    match /curricula/{curriculumId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /learningUnits/{learningUnitId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /upcomingExams/{examType} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Per-student data (students/cultivationProgress): open for now because
+    // there is no Firebase Authentication yet (see docs/domain/tasklist.md).
+    // Must be scoped to `request.auth.uid == studentId` once auth exists.
+    match /students/{studentId} {
+      allow read, write: if true;
+    }
+    match /cultivationProgress/{studentId} {
+      allow read, write: if true;
+    }
+
+    // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;
     }

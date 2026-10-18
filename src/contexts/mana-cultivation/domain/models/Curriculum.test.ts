@@ -27,4 +27,18 @@ describe("Curriculum", () => {
       }),
     ).toThrow();
   });
+
+  describe("reconstruct", () => {
+    it("restores fields without re-checking CurriculumSubjectSpecification", () => {
+      const curriculum = Curriculum.reconstruct({
+        id: "c3",
+        examType: "Eiken",
+        subject: "Science",
+        title: "英検理科?",
+      });
+
+      expect(curriculum.examType).toBe("Eiken");
+      expect(curriculum.subject).toBe("Science");
+    });
+  });
 });

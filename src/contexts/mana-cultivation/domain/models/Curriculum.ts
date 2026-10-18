@@ -23,4 +23,9 @@ export class Curriculum {
     }
     return new Curriculum(id, examType, subject, title);
   }
+
+  // Trusts persisted invariants instead of re-checking CurriculumSubjectSpecification.
+  static reconstruct({ id, examType, subject, title }: CurriculumProps): Curriculum {
+    return new Curriculum(id, examType, subject, title);
+  }
 }

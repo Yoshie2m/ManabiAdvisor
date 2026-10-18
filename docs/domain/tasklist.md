@@ -16,10 +16,10 @@
 - [ ] `StudentAggregate.decideHouse()` の状態遷移（未配属→配属済み）
 - [ ] `AssignHouse` ユースケースのフロー（Not Found時の例外、成功時の `save` 呼び出し）
 
-## 2. 学舎割当コンテキスト（インフラ実装）
+## 2. 学舎割当コンテキスト（インフラ実装）✅実装済み（詳細は7番参照）
 
-- [ ] Firestore の `students` / `manaQualities` 相当のコレクション構成を確定する。
-- [ ] `FirebaseStudentRepository.findById` / `save` を実装する。
+- [x] Firestore の `students` 相当のコレクション構成を確定する。
+- [x] `FirebaseStudentRepository.findById` / `save` を実装する。
 
 ## 3. 魔力修練コンテキスト（主要5科目による能力成長・ドメイン層）✅実装済み
 
@@ -106,11 +106,26 @@
 - [ ] English以外の科目へのQuestionType追加（例: 数学の「計算問題」「文章題」）
 - [ ] 単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体の設計・Firestore格納（今回はタイトルのみのダミー）
 
-## 7. DB連携（次のフェーズ）
+## 7. DB連携（Firestoreコレクション構成・Firebase実装）✅コレクション確定・Firebase実装まで完了
 
-- [ ] Firestore の `students` / `manaQualities` / `curricula` / `learningUnits` 相当のコレクション構成を確定する。
-- [ ] `FirebaseStudentRepository` / `FirebaseCurriculumRepository` を実装し、`infrastructure/memory/` の実装から差し替える（`LearningUnitRepository` / `UpcomingExamRepository` / `CultivationProgressRepository` のFirebase実装も新規に必要）。
-- [ ] `useAcademyStore.ts` のComposition Root部分をFirebase実装に切り替える。
+Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース作成後、以下のコレクション構成で確定し実装した。詳細は `specs/mana-cultivation.md` / `specs/house-assignment.md` を参照。
+
+- [x] コレクション構成を確定（マスタデータ3種 + 生徒ごとのデータ2種）
+  - `curricula/{curriculumId}`: `{ examType, subject, title }`（マスタ、生徒に依存しない）
+  - `learningUnits/{learningUnitId}`: `{ curriculumId, title, difficulty, questionType }`（マスタ）
+  - `upcomingExams/{examType}`: `{ id, examType, scheduledDate, targetLearningUnitIds }`（マスタ。ドキュメントIDに`examType`の値を採用。`findByExamType`が試験種別ごとに最大1件という前提のため）
+  - `students/{studentId}`: `{ manaQuality: {order, chaos, amount}, house }`（学舎割当コンテキスト）
+  - `cultivationProgress/{studentId}`: `{ grade, abilities, understandingLevels, currentDailyMission, currentMockExamMission }`（魔力修練コンテキスト。`studentId`は学舎割当コンテキストのStudentIdを再利用）
+- [x] `FirebaseStudentRepository` / `FirebaseCurriculumRepository` / `FirebaseLearningUnitRepository`（新規） / `FirebaseUpcomingExamRepository`（新規） / `FirebaseCultivationProgressRepository`（新規）を実装
+- [x] 永続化のための復元ファクトリをドメイン層に追加（ビジネスルールの変更ではなく、インメモリ実装では不要だった「ドキュメント→ドメインオブジェクト」復元の技術的対応。いずれも既存の`create`相当のバリデーションを再実行しない、永続化データを信頼する設計）: `StudentAggregate.reconstruct` / `Curriculum.reconstruct` / `LearningUnit.reconstruct` / `Mission.reconstruct` / `CultivationProgress.reconstruct`。`StudentAggregate.manaQuality` / `CultivationProgress.getUnderstandingLevels()` ゲッターも追加（永続化のためのシリアライズに必要）。
+- [x] Firestoreセキュリティルールを更新・デプロイ（マスタ3コレクションは読み取り公開・書き込み拒否、`students`/`cultivationProgress`は認証機構が無いため一時的に読み書き公開。認証導入後に`request.auth.uid == studentId`へ絞る必要あり）
+- [x] `npx tsc --noEmit` / `npm test`（22ファイル・84テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+### 未着手（別途対応）
+
+- [ ] `useAcademyStore.ts` のComposition Root部分を `infrastructure/memory/` からFirebase実装に切り替える（現状はまだインメモリ実装が動いている）。
+- [ ] `curricula` / `learningUnits` / `upcomingExams` の実データをFirestoreに投入するシードスクリプト（現状は `infrastructure/memory/seedData.ts` のダミーデータのみ）。
+- [ ] Firebase Authentication導入、およびそれに伴う `students` / `cultivationProgress` のセキュリティルール強化。
 
 ## 8. 学園案内コンテキスト（回帰防止）
 

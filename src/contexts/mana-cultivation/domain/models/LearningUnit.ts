@@ -28,4 +28,9 @@ export class LearningUnit {
     }
     return new LearningUnit(id, curriculumId, title, difficulty, questionType ?? null);
   }
+
+  // Trusts persisted invariants instead of re-checking SubjectQuestionTypePolicy against a subject.
+  static reconstruct({ id, curriculumId, title, difficulty, questionType }: LearningUnitProps): LearningUnit {
+    return new LearningUnit(id, curriculumId, title, difficulty, questionType ?? null);
+  }
 }

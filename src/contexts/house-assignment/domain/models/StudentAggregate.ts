@@ -11,8 +11,17 @@ export class StudentAggregate {
     return new StudentAggregate(new Student(id, manaQuality));
   }
 
+  // Trusts persisted invariants instead of re-deriving the house from manaQuality.
+  static reconstruct(id: StudentId, manaQuality: ManaQuality, house: House | null): StudentAggregate {
+    return new StudentAggregate(new Student(id, manaQuality, house));
+  }
+
   get id(): StudentId {
     return this.student.id;
+  }
+
+  get manaQuality(): ManaQuality {
+    return this.student.getManaQuality();
   }
 
   get house(): House | null {

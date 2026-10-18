@@ -371,8 +371,8 @@ interface CurriculumRepository {
 }
 ```
 
-- 具象実装 `FirebaseCurriculumRepository`（`infrastructure/firebase/`）は現時点で未実装（スタブで例外を投げる）。Firestoreの `curricula` / `learningUnits` 相当のコレクション構成確定後に実装する。
-- `LearningUnit` を取得するリポジトリは未定義（`CurriculumRepository` は `Curriculum` のみを返す）。
+- 具象実装 `FirebaseCurriculumRepository`（`infrastructure/firebase/`）は実装済み。Firestoreの `curricula/{curriculumId}` コレクションに `{ examType, subject, title }` の形で永続化する（詳細は `tasklist.md` 7番参照）。
+- `LearningUnit` を取得するリポジトリ（`LearningUnitRepository`）は後続の動作確認用システム構築時に追加済み（`domain/repositories/LearningUnitRepository.ts`）。具象実装 `FirebaseLearningUnitRepository` は、Firestoreの `learningUnits/{learningUnitId}` コレクションに `{ curriculumId, title, difficulty, questionType }` の形で永続化する。復元時は `Curriculum.reconstruct` / `LearningUnit.reconstruct` を使い、`CurriculumSubjectSpecification` / `SubjectQuestionTypePolicy` のバリデーションを再実行しない（永続化データは既に確定済みの不変条件を満たしている前提）。
 
 ## テスト不変条件チェックリスト（フェーズ3で実装）
 
@@ -416,7 +416,7 @@ interface CurriculumRepository {
 
 ## スコープ外（残課題。本追記には含まない）
 
-1. **`CultivationProgressRepository`（永続化）**: ドメイン層設計時点では未設計だったが、動作確認用システム構築時にインメモリ実装込みで用意した（`tasklist.md` 参照）。Firebase実装はまだ無い。
+1. **`CultivationProgressRepository`（永続化）**: ドメイン層設計時点では未設計だったが、動作確認用システム構築時にインメモリ実装込みで用意した（`tasklist.md` 参照）。具象実装 `FirebaseCultivationProgressRepository` を実装済み。Firestoreの `cultivationProgress/{studentId}` コレクションに `{ grade, abilities, understandingLevels, currentDailyMission, currentMockExamMission }` の形で永続化する。復元時は `CultivationProgress.reconstruct` を使う（詳細は `tasklist.md` 7番参照）。
 2. **ユースケース層（例: `CompleteLearningUnit` / `RecordAttempt` / `GenerateDailyMission`）**: 同上、動作確認用システム構築時に実装済み（`tasklist.md` 参照）。
 3. **difficulty（難易度）の意味**: 現状 `number` 型のみで制約なし。値域や上昇量との連動（難易度が高いほど上昇量が大きい等）は今回採用しなかった（上昇量は固定）。将来変更する場合は改めて仕様化する。
 4. **Missionの完了状態管理**: 生徒がMissionを「実施した／していない」をトラッキングする仕組みは未設計。

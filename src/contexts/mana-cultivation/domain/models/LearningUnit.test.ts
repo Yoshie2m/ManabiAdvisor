@@ -41,4 +41,29 @@ describe("LearningUnit", () => {
       ),
     ).toThrow();
   });
+
+  describe("reconstruct", () => {
+    it("restores fields without re-checking SubjectQuestionTypePolicy", () => {
+      const unit = LearningUnit.reconstruct({
+        id: "unit-4",
+        curriculumId: "curriculum-math",
+        title: "一次関数 単語テスト?",
+        difficulty: 2,
+        questionType: "VocabularyTest",
+      });
+
+      expect(unit.questionType).toBe("VocabularyTest");
+    });
+
+    it("restores a null questionType when omitted", () => {
+      const unit = LearningUnit.reconstruct({
+        id: "unit-5",
+        curriculumId: "curriculum-math",
+        title: "一次関数",
+        difficulty: 3,
+      });
+
+      expect(unit.questionType).toBeNull();
+    });
+  });
 });

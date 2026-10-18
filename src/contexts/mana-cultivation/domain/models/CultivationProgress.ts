@@ -30,6 +30,28 @@ export class CultivationProgress {
     return new CultivationProgress(studentId, grade, abilities);
   }
 
+  // Trusts persisted invariants instead of re-deriving them; use `initiate` for a brand-new student.
+  static reconstruct(params: {
+    studentId: StudentId;
+    grade: Grade;
+    abilities: ReadonlyMap<Subject, SubjectAbility>;
+    understandingLevels: ReadonlyMap<string, UnderstandingLevel>;
+    currentDailyMission: Mission | null;
+    currentMockExamMission: Mission | null;
+  }): CultivationProgress {
+    const progress = new CultivationProgress(params.studentId, params.grade, new Map(params.abilities));
+    for (const [learningUnitId, level] of params.understandingLevels) {
+      progress.understandingLevels.set(learningUnitId, level);
+    }
+    progress.currentDailyMission = params.currentDailyMission;
+    progress.currentMockExamMission = params.currentMockExamMission;
+    return progress;
+  }
+
+  getUnderstandingLevels(): ReadonlyMap<string, UnderstandingLevel> {
+    return this.understandingLevels;
+  }
+
   getAbility(subject: Subject): SubjectAbility {
     const ability = this.abilities.get(subject);
     if (!ability) {
