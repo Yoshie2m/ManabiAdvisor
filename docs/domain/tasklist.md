@@ -61,7 +61,7 @@
 - [ ] `difficulty`（難易度）の値域・意味、および上昇量との連動要否を確認する
 - [ ] Missionの完了状態管理（やった／やっていない）の要否を確認する
 - [ ] デイリーミッション・モック模試ミッションの一意性制御（重複生成の可否）の要否を確認する
-- [ ] 複数生徒・ログイン機構（現状は固定デモ生徒IDの単一ユーザー動作）
+- [x] 複数生徒・ログイン機構 → 10番でFirebase Authentication導入により解決済み
 
 ## 5. フロントエンドUI（動作確認用）✅実装済み
 
@@ -125,9 +125,7 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `scripts/seedFirestore.ts` を新規作成し、`infrastructure/memory/seedData.ts`（5カリキュラム・43学習ユニット・1次テスト）をFirestoreに投入した（`npm run seed`）。投入時のみ`firestore.rules`のマスタ3コレクションの書き込みを一時的に許可→投入後に元の拒否設定へ戻してデプロイ済み。`seedData.ts`自体はこのスクリプトの入力データとして残す。
 - [x] 開発サーバー・Firestoreへの読み取りクエリで、Firebase実装への切り替えが実際に動作することを確認した。
 
-### 未着手（別途対応）
-
-- [ ] Firebase Authentication導入、およびそれに伴う `students` / `cultivationProgress` のセキュリティルール強化。
+- [x] Firebase Authentication導入、およびそれに伴う `students` / `cultivationProgress` のセキュリティルール強化 → 10番で実施済み。
 
 ## 8. 学園案内コンテキスト（回帰防止）
 
