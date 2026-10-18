@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
+import { QuizCard, type QuizKind } from "@/components/ui/QuizCard";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import type { QuestionType } from "@/contexts/mana-cultivation/domain/models/QuestionType";
 import type { Subject } from "@/contexts/mana-cultivation/domain/models/Subject";
@@ -25,6 +26,14 @@ const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
   PassageTranslationToEnglish: "英訳問題",
   Calculation: "計算問題",
   WordProblem: "文章題",
+};
+
+const QUESTION_TYPE_TO_QUIZ_KIND: Record<QuestionType, QuizKind> = {
+  VocabularyTest: "vocabulary",
+  PassageTranslationToJapanese: "ja-translation",
+  PassageTranslationToEnglish: "en-translation",
+  Calculation: "math",
+  WordProblem: "math",
 };
 
 const GRADE_LABEL: Record<Grade, string> = {
@@ -119,16 +128,21 @@ function LearningUnitRow({
         </div>
       </div>
 
-      {questions && (
-        <div className="flex flex-col gap-2 border-t border-house-primary/20 pt-2">
+      {questions && unit.questionType && (
+        <div className="flex flex-col gap-3 border-t border-house-primary/20 pt-3">
           {questions.length === 0 ? (
             <p className="text-xs opacity-70">この単元の問題はまだ登録されていません。</p>
           ) : (
-            questions.map((question) => (
-              <div key={question.id} className="text-xs">
-                <p>{question.prompt}</p>
-                <p className="opacity-70">答え: {question.answer}</p>
-              </div>
+            questions.map((question, index) => (
+              <QuizCard
+                key={question.id}
+                kind={QUESTION_TYPE_TO_QUIZ_KIND[unit.questionType as QuestionType]}
+                prompt={question.prompt}
+                answer={question.answer}
+                number={index + 1}
+                total={questions.length}
+                onGrade={(grade) => onRecordAttempt(unit.id, grade === "correct")}
+              />
             ))
           )}
         </div>
