@@ -2,9 +2,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Content master data (curricula/learningUnits/upcomingExams): readable
-    // by anyone, written only via the Admin SDK or console — there is no
-    // client-side content authoring flow.
+    // Content master data (curricula/learningUnits/upcomingExams/questions):
+    // readable by anyone, written only via the Admin SDK or console — there
+    // is no client-side content authoring flow.
     match /curricula/{curriculumId} {
       allow read: if true;
       allow write: if false;
@@ -14,6 +14,10 @@ service cloud.firestore {
       allow write: if false;
     }
     match /upcomingExams/{examType} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /questions/{questionId} {
       allow read: if true;
       allow write: if false;
     }

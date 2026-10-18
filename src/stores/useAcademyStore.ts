@@ -8,11 +8,13 @@ import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import { FirebaseCultivationProgressRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCultivationProgressRepository";
 import { FirebaseCurriculumRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCurriculumRepository";
 import { FirebaseLearningUnitRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseLearningUnitRepository";
+import { FirebaseQuestionRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseQuestionRepository";
 import { FirebaseUpcomingExamRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseUpcomingExamRepository";
 import { CompleteLearningUnit } from "@/contexts/mana-cultivation/usecase/CompleteLearningUnit/CompleteLearningUnit";
 import { GenerateDailyMission } from "@/contexts/mana-cultivation/usecase/GenerateDailyMission/GenerateDailyMission";
 import type { CultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
 import { GetCultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
+import { GetQuestionsForLearningUnit } from "@/contexts/mana-cultivation/usecase/GetQuestionsForLearningUnit/GetQuestionsForLearningUnit";
 import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferMockExamMission/OfferMockExamMission";
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
 import { StartCultivation } from "@/contexts/mana-cultivation/usecase/StartCultivation/StartCultivation";
@@ -29,6 +31,7 @@ const curriculumRepository = new FirebaseCurriculumRepository();
 const learningUnitRepository = new FirebaseLearningUnitRepository();
 const upcomingExamRepository = new FirebaseUpcomingExamRepository();
 const cultivationProgressRepository = new FirebaseCultivationProgressRepository();
+const questionRepository = new FirebaseQuestionRepository();
 
 const enrollStudent = new EnrollStudent(studentRepository);
 const startCultivation = new StartCultivation(cultivationProgressRepository);
@@ -46,6 +49,7 @@ const getCultivationOverview = new GetCultivationOverview(
   learningUnitRepository,
   upcomingExamRepository,
 );
+const getQuestionsForLearningUnit = new GetQuestionsForLearningUnit(questionRepository);
 
 function currentStudentId(authUid: string | null): StudentId {
   if (!authUid) {
@@ -56,6 +60,12 @@ function currentStudentId(authUid: string | null): StudentId {
 
 // initialize() はAuthInitializerコンポーネントから一度だけ呼ばれる想定。
 let hasInitialized = false;
+
+export type QuestionView = {
+  id: string;
+  prompt: string;
+  answer: string;
+};
 
 type AcademyState = {
   authUid: string | null;
@@ -75,6 +85,7 @@ type AcademyState = {
   recordAttemptFor: (learningUnitId: string, isCorrect: boolean) => Promise<void>;
   assignDailyMission: () => Promise<void>;
   offerMockExam: () => Promise<void>;
+  fetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
 };
 
 export const useAcademyStore = create<AcademyState>((set, get) => ({
@@ -202,5 +213,14 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
     }
+  },
+
+  fetchQuestions: async (learningUnitId) => {
+    const questions = await getQuestionsForLearningUnit.execute(learningUnitId);
+    return questions.map((question) => ({
+      id: question.id,
+      prompt: question.prompt,
+      answer: question.answer,
+    }));
   },
 }));

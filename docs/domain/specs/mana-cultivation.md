@@ -51,6 +51,66 @@
 3. **Grade型の範囲**: 今回選択肢にするのは `Pre` と `Second` の2つだが、`Grade` 型自体は将来の5学年分（`First`/`Third`/`Fourth`/`Fifth`/`Sixth`）も含めて7値すべてを先に定義する。対応する `ExamType`/カリキュラムがまだ無い学年は、UIでは選択肢に出さないだけに留める。
 4. **大学受験の扱い**: 今回はモデル化しない。「シックスグレード（高3）の先にあるゴール」という位置づけのみドキュメントに残し、型や`ExamType`としては追加しない。
 
+## 意思決定の経緯（第5回ヒアリング: 難易度の値域・能力成長量との連動）
+
+実装前にユーザーへ確認し、以下の方針で合意済み:
+
+1. **値域・意味**: `LearningUnit.difficulty` は1〜5の整数レベル（1が最も易しく、5が最も難しい）とする。`Difficulty` 値オブジェクト（`DIFFICULTIES` 定数・`isDifficulty`）として表現し、範囲外の値は `LearningUnit.create()` 時に例外を投げる。
+2. **能力成長量との連動**: 連動させない。`CultivationProgress.completeLearningUnit()` の上昇量は引き続き固定値（`LEARNING_UNIT_COMPLETION_GAIN = 5`）のまま変更しない。`difficulty` は表示用の指標として独立させる。
+3. **UI表示**: 修練場の学習ユニット一覧に難易度を表示する（`GetCultivationOverview` の `LearningUnitView` に `difficulty` を追加）。
+
+## 意思決定の経緯（第6回ヒアリング: 数学のQuestionType追加）
+
+実装前にユーザーへ確認し、以下の方針で合意済み:
+
+1. **対象科目**: 今回は `Math` のみ。`Japanese`/`Science`/`SocialStudies` は引き続き対応表を追加しない（スコープ外のまま）。
+2. **追加するQuestionType**: `Calculation`（計算問題）・`WordProblem`（文章題）の2種類。`QUESTION_TYPES_BY_SUBJECT.Math` に追加。
+3. **seedデータ**: 既存の数学カリキュラム（第1章 式の計算／第6章 確率と標本調査）に、それぞれの出題形式を持つ学習ユニットを1件ずつ追加する（`unit-math-calc-1` / `unit-math-word-1`）。
+
+## 意思決定の経緯（第7回ヒアリング: コンテンツ本体の設計・投入）
+
+実装前にユーザーへ確認し、以下の方針で合意済み:
+
+1. **格納場所**: `LearningUnit`（構造）とは分離し、新しいFirestoreコレクション `questions/{questionId}` に格納する（`CLAUDE.md` の構造とコンテンツ本体の分離方針に従う）。
+2. **ドメインモデル**: `Question` エンティティ（`{ id, learningUnitId, prompt, answer }`）を新設する。`prompt`/`answer` が空文字なら生成時に例外を投げる。1つの `LearningUnit` に対し0件以上の `Question` が属する（単語テスト・計算問題は複数件、本文の和訳/英訳のような1件だけのユニットもあり得る）。
+3. **実データ**: 今回は例として数件作成する。対象は現在 `questionType` を持つ唯一のユニット群（数学の `unit-math-calc-1` / `unit-math-word-1`）。第1章「式の計算」の計算問題3件、第6章「確率と標本調査」の文章題2件を作成した。英語の単語テスト・和訳・英訳問題は、対応するLearningUnitが現状存在しないため今回は対象外（将来追加する場合は同じ`Question`の仕組みで対応できる）。
+
+### Question（エンティティ）
+
+```ts
+type QuestionProps = { id: string; learningUnitId: string; prompt: string; answer: string };
+
+class Question {
+  static create(props: QuestionProps): Question; // prompt/answerが空文字なら例外
+  static reconstruct(props: QuestionProps): Question; // 永続化データを信頼し、再検証しない
+  readonly id: string;
+  readonly learningUnitId: string;
+  readonly prompt: string;
+  readonly answer: string;
+}
+```
+
+### QuestionRepository（インターフェース）
+
+```ts
+interface QuestionRepository {
+  findByLearningUnitId(learningUnitId: string): Promise<Question[]>;
+}
+```
+
+具象実装 `FirebaseQuestionRepository`（`infrastructure/firebase/`）。Firestoreの `questions/{questionId}` コレクションに `{ learningUnitId, prompt, answer }` の形で永続化する。読み取りのみで、クライアントからの書き込みは禁止（セキュリティルール）。
+
+### GetQuestionsForLearningUnit（ユースケース）
+
+```ts
+class GetQuestionsForLearningUnit {
+  constructor(questionRepository: QuestionRepository);
+  execute(learningUnitId: string): Promise<Question[]>;
+}
+```
+
+`src/app/academy/page.tsx` の学習ユニット一覧で、`questionType` を持つユニットに「問題を見る」ボタンを表示し、クリック時にこのユースケースを呼んで問題文・正解を表示する。
+
 ## 値オブジェクト
 
 ### ExamType
@@ -419,12 +479,12 @@ interface CurriculumRepository {
 1. **`CultivationProgressRepository`（永続化）**: ドメイン層設計時点では未設計だったが、動作確認用システム構築時にインメモリ実装込みで用意した（`tasklist.md` 参照）。具象実装 `FirebaseCultivationProgressRepository` を実装済み。Firestoreの `cultivationProgress/{studentId}` コレクションに `{ grade, abilities, understandingLevels, currentDailyMission, currentMockExamMission }` の形で永続化する。復元時は `CultivationProgress.reconstruct` を使う（詳細は `tasklist.md` 7番参照）。
 2. **ユースケース層（例: `CompleteLearningUnit` / `RecordAttempt` / `GenerateDailyMission`）**: 同上、動作確認用システム構築時に実装済み（`tasklist.md` 参照）。
 3. **difficulty（難易度）の意味**: 現状 `number` 型のみで制約なし。値域や上昇量との連動（難易度が高いほど上昇量が大きい等）は今回採用しなかった（上昇量は固定）。将来変更する場合は改めて仕様化する。
-4. **Missionの完了状態管理**: 生徒がMissionを「実施した／していない」をトラッキングする仕組みは未設計。
-5. **デイリーミッション・モック模試ミッションの一意性制御**: 同じ日・同じ試験に対する重複生成を防ぐ仕組みは未設計（現状は上書きのみ）。
-6. **進級（Gradeの変更）**: `CultivationProgress.initiate` で確定した `Grade` を後から変更する操作（例: セカンドグレード→サードグレードへの進級）は未設計。
-7. **First/Third/Fourth/Fifth/Sixthグレードの中身**: `Grade` 型には定義済みだが、対応する `ExamType`・`Curriculum`・`LearningUnit` はまだ無い。学年を1つ開放するごとに、`ExamType` への追加・`GradeExamTypePolicy` の `REGULAR_EXAM_TYPE_BY_GRADE` への追加・該当カリキュラムの用意が必要。
-8. **大学受験（最終ゴール）**: 「シックスグレードの先にあるゴール」という位置づけのみで、型やExamTypeとしては未着手。
-9. **問題文・単語リスト・正解などのコンテンツ本体**: `QuestionType` はあくまで「出題形式の種類」という構造情報のみ。実際の単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体は、`CLAUDE.md` の方針通りFirestoreに格納する想定で、今回はモデル化・実データ投入のいずれも行っていない（動作確認用のseedDataはタイトルのみのダミー）。
-10. **English以外の科目のQuestionType**: `SubjectQuestionTypePolicy` は `English` のみ対応表を持つ。他科目（数学の「計算問題」等）に出題形式を追加する場合は、改めてヒアリングのうえ `QUESTION_TYPES_BY_SUBJECT` に追加する。
+4. **Missionの完了状態管理**: 生徒がMissionを「実施した／していない」をトラッキングする仕組み。ヒアリングの結果、今回は不要と判断し見送った（第5回ヒアリング、`tasklist.md` 参照）。既存の `recordAttempt`/`completeLearningUnit` による学習状況の追跡で十分とする。
+5. **デイリーミッション・モック模試ミッションの一意性制御**: 同じ日・同じ試験に対する重複生成を防ぐ仕組み。ヒアリングの結果、今回は不要と判断し見送った（第5回ヒアリング、`tasklist.md` 参照）。何度生成しても上書きされる現在の挙動を維持する。
+6. **進級（Gradeの変更）**: `CultivationProgress.initiate` で確定した `Grade` を後から変更する操作（例: セカンドグレード→サードグレードへの進級）。ヒアリングの結果、今回は不要と判断し見送った（第5回ヒアリング、`tasklist.md` 参照）。対応グレードのコンテンツ整備（次項）を優先する。
+7. **First/Third/Fourth/Fifth/Sixthグレードの中身**: `Grade` 型には定義済みだが、対応する `ExamType`・`Curriculum`・`LearningUnit` はまだ無い。学年を1つ開放するごとに、`ExamType` への追加・`GradeExamTypePolicy` の `REGULAR_EXAM_TYPE_BY_GRADE` への追加・該当カリキュラムの用意が必要。ヒアリングの結果、今回は不要と判断し見送った（`README.md`/`CLAUDE.md` 記載の対応学習領域の範囲外、`tasklist.md` 参照）。
+8. **大学受験（最終ゴール）**: 「シックスグレードの先にあるゴール」という位置づけのみで、型やExamTypeとしては未着手。ヒアリングの結果、今回も不要と判断し見送った（第1回ヒアリングの結論を再確認）。
+9. **問題文・単語リスト・正解などのコンテンツ本体**: `QuestionType` はあくまで「出題形式の種類」という構造情報のみ。実際の単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体は、`CLAUDE.md` の方針通りFirestoreに格納する想定で、今回はモデル化・実データ投入のいずれも行っていない（動作確認用のseedDataはタイトルのみのダミー）。→ 第7回ヒアリングで`Question`エンティティとして実装済み（下記参照）。現状は数学の2ユニットのみ実データあり。
+10. **English以外の科目のQuestionType**: `SubjectQuestionTypePolicy` は `English` のみ対応表を持つ。他科目（数学の「計算問題」等）に出題形式を追加する場合は、改めてヒアリングのうえ `QUESTION_TYPES_BY_SUBJECT` に追加する。→ 第6回ヒアリングで `Math`（`Calculation`/`WordProblem`）を追加済み（下記参照）。`Japanese`/`Science`/`SocialStudies` は引き続き未対応。
 
 これらは `tasklist.md` に別タスクとして追加する。

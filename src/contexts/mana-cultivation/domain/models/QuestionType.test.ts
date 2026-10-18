@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import { isQuestionType, QUESTION_TYPES } from "./QuestionType";
 
 describe("QuestionType", () => {
-  it("has the three English question types", () => {
+  it("has the English and Math question types", () => {
     expect(QUESTION_TYPES).toEqual([
       "VocabularyTest",
       "PassageTranslationToJapanese",
       "PassageTranslationToEnglish",
+      "Calculation",
+      "WordProblem",
     ]);
   });
 
@@ -16,6 +18,6 @@ describe("QuestionType", () => {
   });
 
   it("isQuestionType returns false for an unknown value", () => {
-    expect(isQuestionType("Calculation")).toBe(false);
+    expect(isQuestionType("Essay")).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { Difficulty } from "./Difficulty";
 import { LearningUnit } from "./LearningUnit";
 
 describe("LearningUnit", () => {
@@ -10,6 +11,25 @@ describe("LearningUnit", () => {
     );
 
     expect(unit.questionType).toBeNull();
+  });
+
+  it.each([1, 5] as const)("creates successfully at the difficulty boundary %i", (difficulty) => {
+    const unit = LearningUnit.create(
+      { id: "unit-boundary", curriculumId: "curriculum-math", title: "一次関数", difficulty },
+      "Math",
+    );
+
+    expect(unit.difficulty).toBe(difficulty);
+  });
+
+  it("throws for a difficulty outside the 1-5 range", () => {
+    // Simulates data that bypassed the type system (e.g. corrupted persisted data).
+    expect(() =>
+      LearningUnit.create(
+        { id: "unit-invalid", curriculumId: "curriculum-math", title: "一次関数", difficulty: 0 as Difficulty },
+        "Math",
+      ),
+    ).toThrow();
   });
 
   it("creates successfully for a valid subject x questionType combination", () => {

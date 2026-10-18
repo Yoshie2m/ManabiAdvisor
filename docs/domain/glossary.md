@@ -43,7 +43,9 @@
 | **Curriculum（カリキュラム）** | エンティティ | ある `ExamType` ・ `Subject` の組に紐づく学習プログラムの単位。`id` で一意に識別され、タイトルを持つ。生成時に `CurriculumSubjectSpecification` を満たさない組み合わせ（例: 英検×理科）は拒否される。 | `domain/models/Curriculum.ts` |
 | **QuestionType（出題形式）** | 値オブジェクト | 学習ユニットの出題形式を表す列挙値。全科目共通で使える仕組みだが、現時点では英語向けの3種類（`VocabularyTest`＝単語テスト、`PassageTranslationToJapanese`＝本文の和訳、`PassageTranslationToEnglish`＝英訳問題）のみ定義済み。他科目向けの形式は未定義。 | `domain/models/QuestionType.ts` |
 | **SubjectQuestionTypePolicy（科目別出題形式ポリシー）** | 仕様（ポリシー） | ある `Subject` がどの `QuestionType` をサポートするかを判定する純粋なドメインルール。現時点では `English` のみ3形式に対応し、他科目は対応表が空（＝どの `QuestionType` も許可しない）。 | `domain/specs/SubjectQuestionTypePolicy.ts` |
-| **LearningUnit（学習ユニット）** | エンティティ | ある `Curriculum` に属する学習範囲の最小単位。`id` で一意に識別され、所属カリキュラムID・タイトル・難易度（`difficulty`）・出題形式（`questionType`、省略可）を持つ。`questionType` を指定する場合は `SubjectQuestionTypePolicy` を満たさなければならない（例: 数学に `VocabularyTest` は付けられない）。「不定詞」のような通常の文法単元は `questionType = null` のまま、「単語テスト」「本文の和訳」「英訳問題」は `questionType` を持つ独立した `LearningUnit` として表現する（文法単元に紐づく形式バリエーションではない）。 | `domain/models/LearningUnit.ts` |
+| **Difficulty（難易度）** | 値オブジェクト | `LearningUnit` の難易度を表す1〜5の整数レベル（1が最も易しく、5が最も難しい）。`DIFFICULTIES` 定数5値・`Difficulty`型・`isDifficulty` 真偽判定を持つ。能力成長量（`LEARNING_UNIT_COMPLETION_GAIN`）とは連動させない（表示用の指標として独立させる方針を確認済み）。 | `domain/models/Difficulty.ts` |
+| **LearningUnit（学習ユニット）** | エンティティ | ある `Curriculum` に属する学習範囲の最小単位。`id` で一意に識別され、所属カリキュラムID・タイトル・難易度（`difficulty: Difficulty`）・出題形式（`questionType`、省略可）を持つ。`difficulty` が1〜5の範囲外の場合、生成時に例外を投げる。`questionType` を指定する場合は `SubjectQuestionTypePolicy` を満たさなければならない（例: 数学に `VocabularyTest` は付けられない）。「不定詞」のような通常の文法単元は `questionType = null` のまま、「単語テスト」「本文の和訳」「英訳問題」は `questionType` を持つ独立した `LearningUnit` として表現する（文法単元に紐づく形式バリエーションではない）。 | `domain/models/LearningUnit.ts` |
+| **Question（問題）** | エンティティ | ある `LearningUnit` に属する、問題文（`prompt`）と正解例（`answer`）を1組持つ学習コンテンツ本体。`id` で一意に識別され、空文字の `prompt`/`answer` は許容しない。`LearningUnit`（構造）とは別のFirestoreコレクション（`questions`）に格納し、1つの `LearningUnit` に0件以上の `Question` が属する。 | `domain/models/Question.ts` |
 | **CurriculumRepository（カリキュラムリポジトリ）** | リポジトリ（インターフェース） | `ExamType` に応じた `Curriculum` 一覧の取得を抽象化する境界。 | `domain/repositories/CurriculumRepository.ts` |
 | **SubjectAbility（科目別能力）** | 値オブジェクト | 生徒が持つ、ある1科目についての習熟度を表す不変オブジェクト。`subject` と `level`（0〜100）からなる。`increase(amount)` は上限100でクランプした新しい `SubjectAbility` を返す。 | `domain/models/SubjectAbility.ts` |
 | **UnderstandingLevel（単元理解度）** | 値オブジェクト | 生徒が持つ、ある1 `LearningUnit` についての理解度を表す不変オブジェクト。`correctCount`（正解数）・`totalCount`（試行数）からなり、`rate`（正答率、0〜100。未試行は0）を算出する。`recordAttempt(isCorrect)` は正誤を1件記録した新しい `UnderstandingLevel` を返す。 | `domain/models/UnderstandingLevel.ts` |
@@ -56,7 +58,7 @@
 | **デイリーミッション付与（assignDailyMission）** | ドメイン操作 | `CultivationProgress` が、`UpcomingExam`（出題範囲）と `FocusUnitSelectionPolicy` を使って理解度最低の1単元を選び、`type="Daily"` の `Mission` を生成して保持するふるまい。 | `CultivationProgress.assignDailyMission()` |
 | **モック模試ミッション提示（offerMockExamMission）** | ドメイン操作 | `CultivationProgress` が、`UpcomingExam` の出題範囲全体を対象とする `type="MockExam"` の `Mission` を生成して保持するふるまい。生徒はこのミッションを選択して挑戦できる。 | `CultivationProgress.offerMockExamMission()` |
 
-> **残課題**: `CultivationProgress` / `UpcomingExam` / `Mission` の永続化（リポジトリ）、およびアプリケーション層からのトリガー（ユースケース）は、ドメイン層の設計時点では含まれていなかったが、後続の「動作確認用システム」構築時にインメモリ実装込みで用意した（`tasklist.md` を参照）。一方、`Grade`（学年段階）の進級（例: セカンドグレード→サードグレード）を表す操作はまだ無く、`CultivationProgress.initiate` 時に確定した `Grade` は不変のまま。進級機能は別途ヒアリングのうえ設計する。
+> **残課題**: `CultivationProgress` / `UpcomingExam` / `Mission` の永続化（リポジトリ）、およびアプリケーション層からのトリガー（ユースケース）は、ドメイン層の設計時点では含まれていなかったが、後続の「動作確認用システム」構築時にインメモリ実装込みで用意した（`tasklist.md` を参照）。一方、`Grade`（学年段階）の進級（例: セカンドグレード→サードグレード）を表す操作はまだ無く、`CultivationProgress.initiate` 時に確定した `Grade` は不変のまま。ヒアリングの結果、進級機能は今回は不要と判断し見送った（対応グレードのコンテンツ整備を優先する、`tasklist.md` 参照）。
 
 ---
 

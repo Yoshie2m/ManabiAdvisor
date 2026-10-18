@@ -1,4 +1,5 @@
 import type { StudentId } from "../../../house-assignment/domain/models/StudentId";
+import type { Difficulty } from "../../domain/models/Difficulty";
 import type { ExamType } from "../../domain/models/ExamType";
 import type { Grade } from "../../domain/models/Grade";
 import type { Mission, MissionType } from "../../domain/models/Mission";
@@ -20,6 +21,7 @@ export type LearningUnitView = {
   title: string;
   curriculumId: string;
   subject: Subject;
+  difficulty: Difficulty;
   questionType: QuestionType | null;
   understandingRate: number;
 };
@@ -92,6 +94,7 @@ export class GetCultivationOverview {
         title: unit.title,
         curriculumId: unit.curriculumId,
         subject: subjectByCurriculumId.get(unit.curriculumId) as Subject,
+        difficulty: unit.difficulty,
         questionType: unit.questionType,
         understandingRate: progress.getUnderstanding(unit.id).rate,
       })),

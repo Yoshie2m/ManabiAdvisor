@@ -2,6 +2,7 @@ import { collection, doc, getDoc, getDocs, query, where, type DocumentData } fro
 
 import { firestore } from "@/lib/firebase";
 
+import type { Difficulty } from "../../domain/models/Difficulty";
 import { LearningUnit } from "../../domain/models/LearningUnit";
 import type { QuestionType } from "../../domain/models/QuestionType";
 import type { LearningUnitRepository } from "../../domain/repositories/LearningUnitRepository";
@@ -11,7 +12,7 @@ const COLLECTION = "learningUnits";
 type LearningUnitDocument = {
   curriculumId: string;
   title: string;
-  difficulty: number;
+  difficulty: Difficulty;
   questionType: QuestionType | null;
 };
 

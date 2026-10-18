@@ -58,9 +58,9 @@
 
 ### 未解決のまま残した論点（DB連携 or 本格運用前に要ヒアリング）
 
-- [ ] `difficulty`（難易度）の値域・意味、および上昇量との連動要否を確認する
-- [ ] Missionの完了状態管理（やった／やっていない）の要否を確認する
-- [ ] デイリーミッション・モック模試ミッションの一意性制御（重複生成の可否）の要否を確認する
+- [x] `difficulty`（難易度）の値域・意味、および上昇量との連動要否を確認する → 11番で実装済み（1〜5の整数レベル、能力成長量とは連動なし）
+- [x] Missionの完了状態管理（やった／やっていない）の要否を確認する → ヒアリングの結果、今回は不要と判断（スコープ外のまま）。`recordAttempt`/`completeLearningUnit`による既存の学習状況追跡で十分とし、Mission自体への完了フラグは追加しない。
+- [x] デイリーミッション・モック模試ミッションの一意性制御（重複生成の可否）の要否を確認する → ヒアリングの結果、今回は不要と判断（スコープ外のまま）。何度生成しても上書きされる現在の挙動を維持する。
 - [x] 複数生徒・ログイン機構 → 10番でFirebase Authentication導入により解決済み
 
 ## 5. フロントエンドUI（動作確認用）✅実装済み
@@ -85,9 +85,9 @@
 
 ### 未解決のまま残した論点（別途ヒアリングが必要）
 
-- [ ] 進級（`Grade`の変更）を表す操作の設計
-- [ ] `First`/`Third`/`Fourth`/`Fifth`/`Sixth`グレードの`ExamType`・`Curriculum`・`LearningUnit`の用意
-- [ ] 大学受験（最終ゴール）のモデル化要否・方法
+- [x] 進級（`Grade`の変更）を表す操作の設計 → ヒアリングの結果、今回は不要と判断（スコープ外のまま）。対応グレードのコンテンツ整備（直後の項目）を先に進める。
+- [x] `First`/`Third`/`Fourth`/`Fifth`/`Sixth`グレードの`ExamType`・`Curriculum`・`LearningUnit`の用意 → ヒアリングの結果、今回は不要と判断（スコープ外のまま）。`README.md`/`CLAUDE.md`記載の「対応する学習領域」（中2定期テスト・英検・小6中学受験）の範囲外のため。
+- [x] 大学受験（最終ゴール）のモデル化要否・方法 → ヒアリングの結果、今回も不要と判断（第1回ヒアリングの結論を再確認。スコープ外のまま）。
 
 ## 6b. 魔力修練コンテキスト（英語の出題形式モデル）✅実装済み
 
@@ -103,8 +103,8 @@
 
 ### 未解決のまま残した論点（別途ヒアリングが必要）
 
-- [ ] English以外の科目へのQuestionType追加（例: 数学の「計算問題」「文章題」）
-- [ ] 単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体の設計・Firestore格納（今回はタイトルのみのダミー）
+- [x] English以外の科目へのQuestionType追加（例: 数学の「計算問題」「文章題」） → 12番で実装済み（数学に`Calculation`/`WordProblem`を追加。他3科目は未対応のまま）
+- [x] 単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体の設計・Firestore格納（今回はタイトルのみのダミー） → 13番で実装済み。`Question`エンティティ＋`questions`コレクションを新設し、数学の計算問題・文章題に実データ（5件）を投入した。英語の単語テスト・和訳・英訳問題は現状対応するLearningUnitが存在しないため未投入（必要になったら同じ仕組みで追加する）。
 
 ## 7. DB連携（Firestoreコレクション構成・Firebase実装）✅コレクション確定・Firebase実装まで完了
 
@@ -163,3 +163,39 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `firestore.rules` を更新・デプロイ: `students/{studentId}` / `cultivationProgress/{studentId}` を `allow read, write: if request.auth != null && request.auth.uid == studentId;` に変更
 - [x] `firebase/auth` のサインアップ/ログインをNodeスクリプトで動作確認、Cloudflare Workers上（`wrangler dev`）でもエラー無く200応答することを確認した（`firebase/firestore`と異なり`firebase/auth`はprotobufjsのcodegenに依存せず、`/lite`への切り替えは不要だった）
 - [x] `npx tsc --noEmit` / `npm test`（22ファイル・83テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 11. 魔力修練コンテキスト（Difficulty値オブジェクトの追加）✅実装済み
+
+`specs/mana-cultivation.md` の「意思決定の経緯（第5回ヒアリング）」節でヒアリング済み。
+
+- [x] `domain/models/Difficulty.ts` を新規作成（`DIFFICULTIES` 定数5値・`Difficulty`型・`isDifficulty`）＋テスト
+- [x] `domain/models/LearningUnit.ts` を更新（`difficulty: number` → `difficulty: Difficulty` に変更、`create()` で範囲外なら例外を投げる）＋テスト更新
+- [x] `infrastructure/firebase/FirebaseLearningUnitRepository.ts` のドキュメント型を更新
+- [x] `usecase/GetCultivationOverview/GetCultivationOverview.ts` の `LearningUnitView` に `difficulty` を追加
+- [x] `src/app/academy/page.tsx` の学習ユニット一覧に難易度（★表示）を追加
+- [x] `npx tsc --noEmit` / `npm test`（23ファイル・95テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 12. 魔力修練コンテキスト（数学のQuestionType追加）✅実装済み
+
+`specs/mana-cultivation.md` の「意思決定の経緯（第6回ヒアリング）」節でヒアリング済み。
+
+- [x] `domain/models/QuestionType.ts` に `Calculation`（計算問題）・`WordProblem`（文章題）を追加 ＋ テスト更新
+- [x] `domain/specs/SubjectQuestionTypePolicy.ts` の対応表に `Math: ["Calculation", "WordProblem"]` を追加 ＋ テスト追加
+- [x] `infrastructure/memory/seedData.ts` に数学の出題形式別ユニットを2件追加（`unit-math-calc-1` / `unit-math-word-1`）し、`npm run seed` でFirestoreに再投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）
+- [x] `src/app/academy/page.tsx` の `QUESTION_TYPE_LABEL` に日本語ラベルを追加
+- [x] `npx tsc --noEmit` / `npm test`（23ファイル・99テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 13. 魔力修練コンテキスト（コンテンツ本体: Question）✅実装済み
+
+`specs/mana-cultivation.md` の「意思決定の経緯（第7回ヒアリング）」節でヒアリング済み。
+
+- [x] `domain/models/Question.ts` を新規作成（`create`/`reconstruct`、prompt/answerの空文字バリデーション）＋テスト
+- [x] `domain/repositories/QuestionRepository.ts` を新規作成（`findByLearningUnitId`）
+- [x] `infrastructure/firebase/FirebaseQuestionRepository.ts` を新規作成（Firestoreの `questions` コレクション）
+- [x] `usecase/GetQuestionsForLearningUnit/GetQuestionsForLearningUnit.ts` を新規作成 ＋ テスト
+- [x] `infrastructure/memory/seedData.ts` に数学の実問題5件（計算問題3件・文章題2件）を追加し、`scripts/seedFirestore.ts` 経由で `npm run seed` でFirestoreに投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）
+- [x] `firestore.rules` に `questions` コレクションの読み取り公開・書き込み拒否ルールを追加・デプロイ
+- [x] `src/stores/useAcademyStore.ts` に `fetchQuestions` アクションを追加（Composition Rootに `FirebaseQuestionRepository` / `GetQuestionsForLearningUnit` を追加）
+- [x] `src/app/academy/page.tsx` に「問題を見る」ボタン（`LearningUnitRow` コンポーネント）を追加し、クリックで問題文・正解を表示
+- [x] Firestoreへの直接クエリで実データの読み取りを確認
+- [x] `npx tsc --noEmit` / `npm test`（25ファイル・104テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

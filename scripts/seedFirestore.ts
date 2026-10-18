@@ -4,11 +4,12 @@ import { doc, getFirestore, setDoc, Timestamp } from "firebase/firestore/lite";
 import {
   curricula,
   learningUnits,
+  questions,
   upcomingExams,
 } from "../src/contexts/mana-cultivation/infrastructure/memory/seedData";
 
-// One-off script to populate Firestore's curricula/learningUnits/upcomingExams
-// collections from the demo content in infrastructure/memory/seedData.ts.
+// One-off script to populate Firestore's curricula/learningUnits/upcomingExams/
+// questions collections from the demo content in infrastructure/memory/seedData.ts.
 // Firestore's security rules deny client writes to these collections, so run
 // this only while firestore.rules temporarily allows writes to them (see the
 // TEMPORARY comment in firestore.rules), then revert and redeploy the rules.
@@ -54,8 +55,16 @@ async function main() {
     });
   }
 
+  for (const question of questions) {
+    await setDoc(doc(firestore, "questions", question.id), {
+      learningUnitId: question.learningUnitId,
+      prompt: question.prompt,
+      answer: question.answer,
+    });
+  }
+
   console.log(
-    `Seeded ${curricula.length} curricula, ${learningUnits.length} learning units, ${upcomingExams.length} upcoming exams.`,
+    `Seeded ${curricula.length} curricula, ${learningUnits.length} learning units, ${upcomingExams.length} upcoming exams, ${questions.length} questions.`,
   );
 }
 

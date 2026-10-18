@@ -1,6 +1,7 @@
 import { Curriculum } from "../../domain/models/Curriculum";
 import type { ExamType } from "../../domain/models/ExamType";
 import { LearningUnit } from "../../domain/models/LearningUnit";
+import { Question } from "../../domain/models/Question";
 import { UpcomingExam } from "../../domain/models/UpcomingExam";
 
 // 動作確認用の仮コンテンツ。本来はFirestoreのコレクション/Cloud Storageに格納する
@@ -120,6 +121,27 @@ export const learningUnits: LearningUnit[] = [
   ),
   LearningUnit.create(
     { id: "unit-math-c6-s4", curriculumId: "curriculum-math", title: "第6章 確率と標本調査 4: 標本調査", difficulty: 2 },
+    "Math",
+  ),
+  // 数学の出題形式別ユニット（計算問題・文章題）。
+  LearningUnit.create(
+    {
+      id: "unit-math-calc-1",
+      curriculumId: "curriculum-math",
+      title: "第1章 式の計算 計算問題",
+      difficulty: 2,
+      questionType: "Calculation",
+    },
+    "Math",
+  ),
+  LearningUnit.create(
+    {
+      id: "unit-math-word-1",
+      curriculumId: "curriculum-math",
+      title: "第6章 確率と標本調査 文章題",
+      difficulty: 3,
+      questionType: "WordProblem",
+    },
     "Math",
   ),
   // 国語の学習2（浜島書店）読解3篇。
@@ -268,4 +290,38 @@ export const upcomingExams: UpcomingExam[] = [
     "unit-social-c4-s2",
     "unit-social-c4-s3",
   ]),
+];
+
+// 数学の出題形式別ユニット（unit-math-calc-1 / unit-math-word-1）向けの実際の問題例。
+export const questions: Question[] = [
+  Question.create({
+    id: "q-math-calc-1",
+    learningUnitId: "unit-math-calc-1",
+    prompt: "(x+3)(x-5) を展開しなさい。",
+    answer: "x^2 - 2x - 15",
+  }),
+  Question.create({
+    id: "q-math-calc-2",
+    learningUnitId: "unit-math-calc-1",
+    prompt: "x^2 - 9 を因数分解しなさい。",
+    answer: "(x+3)(x-3)",
+  }),
+  Question.create({
+    id: "q-math-calc-3",
+    learningUnitId: "unit-math-calc-1",
+    prompt: "2x^2 + 7x + 3 を因数分解しなさい。",
+    answer: "(2x+1)(x+3)",
+  }),
+  Question.create({
+    id: "q-math-word-1",
+    learningUnitId: "unit-math-word-1",
+    prompt: "大小2つのさいころを同時に投げるとき、出る目の数の和が7になる確率を求めなさい。",
+    answer: "1/6（36通り中6通り）",
+  }),
+  Question.create({
+    id: "q-math-word-2",
+    learningUnitId: "unit-math-word-1",
+    prompt: "1から9までの数字が1つずつ書かれた9枚のカードから1枚引くとき、引いたカードが3の倍数である確率を求めなさい。",
+    answer: "1/3（9枚中3枚）",
+  }),
 ];

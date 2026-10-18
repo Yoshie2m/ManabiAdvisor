@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import type { QuestionType } from "@/contexts/mana-cultivation/domain/models/QuestionType";
 import type { Subject } from "@/contexts/mana-cultivation/domain/models/Subject";
-import { useAcademyStore } from "@/stores/useAcademyStore";
+import type { LearningUnitView } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
+import { useAcademyStore, type QuestionView } from "@/stores/useAcademyStore";
 
 const SUBJECT_LABEL: Record<Subject, string> = {
   English: "英語",
@@ -22,6 +23,8 @@ const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
   VocabularyTest: "単語テスト",
   PassageTranslationToJapanese: "本文の和訳",
   PassageTranslationToEnglish: "英訳問題",
+  Calculation: "計算問題",
+  WordProblem: "文章題",
 };
 
 const GRADE_LABEL: Record<Grade, string> = {
@@ -33,6 +36,106 @@ const GRADE_LABEL: Record<Grade, string> = {
   Fifth: "フィフスグレード（高2）",
   Sixth: "シックスグレード（高3）",
 };
+
+function LearningUnitRow({
+  unit,
+  onRecordAttempt,
+  onComplete,
+  onFetchQuestions,
+}: {
+  unit: LearningUnitView;
+  onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
+  onComplete: (learningUnitId: string) => void;
+  onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
+}) {
+  const [questions, setQuestions] = useState<QuestionView[] | null>(null);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+
+  async function toggleQuestions() {
+    if (questions) {
+      setQuestions(null);
+      return;
+    }
+    setIsLoadingQuestions(true);
+    try {
+      setQuestions(await onFetchQuestions(unit.id));
+    } finally {
+      setIsLoadingQuestions(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-house-primary/30 p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p>
+            {unit.title}
+            {unit.questionType && (
+              <span className="ml-2 rounded-full bg-house-primary/20 px-2 py-0.5 text-xs text-house-primary">
+                {QUESTION_TYPE_LABEL[unit.questionType]}
+              </span>
+            )}
+          </p>
+          <p className="text-xs opacity-70">
+            理解度 {unit.understandingRate}%・難易度{" "}
+            <span aria-label={`難易度 ${unit.difficulty}`}>
+              {"★".repeat(unit.difficulty)}
+              {"☆".repeat(5 - unit.difficulty)}
+            </span>
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {unit.questionType && (
+            <button
+              type="button"
+              onClick={() => void toggleQuestions()}
+              disabled={isLoadingQuestions}
+              className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+            >
+              {isLoadingQuestions ? "読込中…" : questions ? "問題を閉じる" : "問題を見る"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onRecordAttempt(unit.id, true)}
+            className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            正解
+          </button>
+          <button
+            type="button"
+            onClick={() => onRecordAttempt(unit.id, false)}
+            className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            不正解
+          </button>
+          <button
+            type="button"
+            onClick={() => onComplete(unit.id)}
+            className="rounded-md bg-house-primary px-2 py-1 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            単元完了 (+5)
+          </button>
+        </div>
+      </div>
+
+      {questions && (
+        <div className="flex flex-col gap-2 border-t border-house-primary/20 pt-2">
+          {questions.length === 0 ? (
+            <p className="text-xs opacity-70">この単元の問題はまだ登録されていません。</p>
+          ) : (
+            questions.map((question) => (
+              <div key={question.id} className="text-xs">
+                <p>{question.prompt}</p>
+                <p className="opacity-70">答え: {question.answer}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AbilityBar({ subject, level }: { subject: Subject; level: number }) {
   return (
@@ -61,6 +164,7 @@ export default function AcademyPage() {
     recordAttemptFor,
     assignDailyMission,
     offerMockExam,
+    fetchQuestions,
   } = useAcademyStore();
 
   useEffect(() => {
@@ -164,45 +268,13 @@ export default function AcademyPage() {
               <div key={subject} className="flex flex-col gap-2">
                 <p className="text-sm font-semibold text-house-primary">{SUBJECT_LABEL[subject]}</p>
                 {units.map((unit) => (
-                  <div
+                  <LearningUnitRow
                     key={unit.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-house-primary/30 p-3 text-sm"
-                  >
-                    <div>
-                      <p>
-                        {unit.title}
-                        {unit.questionType && (
-                          <span className="ml-2 rounded-full bg-house-primary/20 px-2 py-0.5 text-xs text-house-primary">
-                            {QUESTION_TYPE_LABEL[unit.questionType]}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs opacity-70">理解度 {unit.understandingRate}%</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void recordAttemptFor(unit.id, true)}
-                        className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-                      >
-                        正解
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void recordAttemptFor(unit.id, false)}
-                        className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-                      >
-                        不正解
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void completeUnit(unit.id)}
-                        className="rounded-md bg-house-primary px-2 py-1 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-                      >
-                        単元完了 (+5)
-                      </button>
-                    </div>
-                  </div>
+                    unit={unit}
+                    onRecordAttempt={(id, isCorrect) => void recordAttemptFor(id, isCorrect)}
+                    onComplete={(id) => void completeUnit(id)}
+                    onFetchQuestions={fetchQuestions}
+                  />
                 ))}
               </div>
             ))}
