@@ -199,3 +199,15 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/app/academy/page.tsx` に「問題を見る」ボタン（`LearningUnitRow` コンポーネント）を追加し、クリックで問題文・正解を表示
 - [x] Firestoreへの直接クエリで実データの読み取りを確認
 - [x] `npx tsc --noEmit` / `npm test`（25ファイル・104テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 14. 学園案内コンテキスト（修練場の3タブ構成への再編）✅実装済み
+
+ユーザーから画面レイアウト案（大広間・魔導書庫・幻影の塔）のペーストを受け、スコープをヒアリング済み。方針: タブ構成・属性の呼称（命名）は全面導入、「教科書設定」は見送り、「幻影の塔」は既存`UnderstandingLevel`から導出する簡易版。新しいドメインモデルは伴わない（`attemptCount`フィールド追加のみ）ため、`specs/*.md`への新規仕様追加はせず本タスクリストのみで進めた。
+
+- [x] `GetCultivationOverview`の`LearningUnitView`に`attemptCount`（試行回数）を追加（「一度も挑んでいない」と「挑んで理解度が低い」を区別するため）
+- [x] `src/app/academy/page.tsx`を3タブ構成に再編
+  - 大広間: 既存デイリーミッション・既存UpcomingExamを使った試験カウントダウン（残り日数に応じて枠の発光が強まる。`prefers-reduced-motion`では停止）・予想問題ミッション
+  - 魔導書庫: 5属性（言霊/数秘/異界語/錬金/地誌歴史）の選択→その科目の能力値・学習ユニット一覧（既存データのみ、教科書設定は無し）
+  - 幻影の塔: 全属性/属性別フィルタ、`attemptCount > 0 かつ understandingRate < 60` を「ニガテの幻影」として表示。正答で理解度が上がれば一覧から自然に消える（新しい永続状態は持たない）
+- [x] `docs/domain/glossary.md`にタブ構成・属性呼称・ニガテ/浄化のUI概念を追記
+- [x] `npx tsc --noEmit` / `npm test`（25ファイル・104テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

@@ -24,6 +24,7 @@ export type LearningUnitView = {
   difficulty: Difficulty;
   questionType: QuestionType | null;
   understandingRate: number;
+  attemptCount: number;
 };
 
 export type MissionView = {
@@ -97,6 +98,7 @@ export class GetCultivationOverview {
         difficulty: unit.difficulty,
         questionType: unit.questionType,
         understandingRate: progress.getUnderstanding(unit.id).rate,
+        attemptCount: progress.getUnderstanding(unit.id).totalCount,
       })),
       dailyMission: toMissionView(progress.getCurrentDailyMission()),
       mockExamMission: toMissionView(progress.getMockExamMission()),

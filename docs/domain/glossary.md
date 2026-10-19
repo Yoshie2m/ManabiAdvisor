@@ -70,8 +70,12 @@
 |---|---|---|---|
 | **ThemeProvider（テーマプロバイダ）** | プレゼンテーション層コンポーネント | `House` 値オブジェクトの値を `data-theme` DOM属性に変換する、ドメイン出力とDOMを繋ぐ唯一の場所。 | `components/theme/ThemeProvider.tsx` |
 | **意味トークン（Semantic Tokens）** | デザインシステム概念 | `house-bg` / `house-text` / `house-primary` / `house-on-primary` / `house-accent` / `house-focus` のこと。学舎ごとの実色（`color-regius-*` / `color-rose-*`）を抽象化する。 | `styles/tokens.css` |
-| **GrimoireCard（魔導書風カード）** | UIコンポーネント | デザインシステム仕様に基づくカードコンポーネント。 | `components/ui/GrimoireCard.tsx` |
+| **GrimoireCard（魔導書風カード）** | UIコンポーネント | デザインシステム仕様に基づくカードコンポーネント。`title`・任意の`footer`スロットを持つ。 | `components/ui/GrimoireCard.tsx` |
 | **MagicalToggle（魔法トグル）** | UIコンポーネント | デザインシステム仕様に基づくトグルスイッチコンポーネント。 | `components/ui/MagicalToggle.tsx` |
+| **QuizCard（クイズカード）** | UIコンポーネント | `GrimoireCard`を土台にした、問題と解答を1枚で出すカード。`kind`（`vocabulary`/`ja-translation`/`en-translation`/`math`）ごとに章題・指示文・言語が自動で決まる。解答の開閉、ヒント、別解、数学の解き方手順、「覚えた／もう一度」の自己採点に対応。寮ごとに解答の出現演出が異なる（レギウス=中央から瞬時に開く、ローズ=霞から浮かび上がる）。デザインシステムの`project/components/QuizCard/`仕様を移植。 | `components/ui/QuizCard.tsx` |
+| **修練場のタブ構成** | UI構成 | `src/app/academy/page.tsx`は「大広間」（本日のデイリークエスト・試験カウントダウン・予想問題ミッション）／「魔導書庫」（5属性からの科目選択・頻出問題演習）／「幻影の塔」（理解度の低い単元＝ニガテの幻影を表示し、正答で消滅＝浄化）の3タブで構成する。 | `app/academy/page.tsx` |
+| **5つの魔導属性（科目の呼称）** | UI概念 | 科目を物語風に呼び分ける表示名。国語＝言霊（ことだま）、数学＝数秘（すうひ）、英語＝異界語（いかいご）、理科＝錬金（れんきん）、社会＝地誌・歴史（ちし・れきし）。ドメイン層の`Subject`型自体は変更しない（表示名のみのマッピング）。 | `app/academy/page.tsx` の `SUBJECT_ELEMENT` |
+| **ニガテの幻影／浄化** | UI概念 | 「幻影の塔」で、ある学習ユニットが1回以上挑戦済み（`attemptCount > 0`）かつ理解度が一定の閾値未満（現状60%）のとき「ニガテの幻影」として表示する。正答を重ねて理解度が閾値以上になると一覧から自然に消える（＝浄化）。新しい永続状態は持たない、既存の`UnderstandingLevel`から導出する表示上の概念。 | `app/academy/page.tsx` の `WEAK_UNDERSTANDING_THRESHOLD` |
 
 ---
 

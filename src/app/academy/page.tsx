@@ -8,8 +8,11 @@ import { GrimoireCard } from "@/components/ui/GrimoireCard";
 import { QuizCard, type QuizKind } from "@/components/ui/QuizCard";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import type { QuestionType } from "@/contexts/mana-cultivation/domain/models/QuestionType";
-import type { Subject } from "@/contexts/mana-cultivation/domain/models/Subject";
-import type { LearningUnitView } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
+import { SUBJECTS, type Subject } from "@/contexts/mana-cultivation/domain/models/Subject";
+import type {
+  CultivationOverview,
+  LearningUnitView,
+} from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
 import { useAcademyStore, type QuestionView } from "@/stores/useAcademyStore";
 
 const SUBJECT_LABEL: Record<Subject, string> = {
@@ -18,6 +21,23 @@ const SUBJECT_LABEL: Record<Subject, string> = {
   Japanese: "国語",
   Science: "理科",
   SocialStudies: "社会",
+};
+
+// 5つの魔導属性（教科の魔法名）。
+const SUBJECT_ELEMENT: Record<Subject, string> = {
+  Japanese: "言霊（ことだま）",
+  Math: "数秘（すうひ）",
+  English: "異界語（いかいご）",
+  Science: "錬金（れんきん）",
+  SocialStudies: "地誌・歴史（ちし・れきし）",
+};
+
+const SUBJECT_EMOJI: Record<Subject, string> = {
+  Japanese: "🔴",
+  Math: "🔵",
+  English: "🟢",
+  Science: "⚡",
+  SocialStudies: "🟤",
 };
 
 const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
@@ -45,6 +65,17 @@ const GRADE_LABEL: Record<Grade, string> = {
   Fifth: "フィフスグレード（高2）",
   Sixth: "シックスグレード（高3）",
 };
+
+// 「ニガテの幻影」とみなす理解度のしきい値。一度も挑んでいない単元（attemptCount=0）は対象外。
+const WEAK_UNDERSTANDING_THRESHOLD = 60;
+
+type Tab = "home" | "library" | "tower";
+
+const TABS: { id: Tab; label: string; emoji: string }[] = [
+  { id: "home", label: "大広間", emoji: "🏰" },
+  { id: "library", label: "魔導書庫", emoji: "📚" },
+  { id: "tower", label: "幻影の塔", emoji: "⚔️" },
+];
 
 function LearningUnitRow({
   unit,
@@ -168,6 +199,257 @@ function AbilityBar({ subject, level }: { subject: Subject; level: number }) {
   );
 }
 
+function ExamCountdown({ scheduledDate }: { scheduledDate: Date }) {
+  const [now] = useState(() => Date.now());
+  const daysLeft = Math.ceil((scheduledDate.getTime() - now) / (1000 * 60 * 60 * 24));
+  const urgency =
+    daysLeft <= 3 ? "critical" : daysLeft <= 7 ? "urgent" : daysLeft <= 14 ? "warning" : "calm";
+  const ringClassByUrgency: Record<typeof urgency, string> = {
+    calm: "border-house-primary/40",
+    warning: "border-house-primary",
+    urgent: "border-house-accent shadow-[0_0_16px_var(--house-accent)]",
+    critical:
+      "border-house-accent shadow-[0_0_24px_var(--house-accent)] animate-pulse motion-reduce:animate-none",
+  };
+
+  return (
+    <div className="flex items-center gap-4">
+      <div
+        className={`flex h-20 w-20 flex-none items-center justify-center rounded-full border-4 transition-shadow ${ringClassByUrgency[urgency]}`}
+      >
+        <span className="font-display text-2xl font-bold tabular-nums">{Math.max(daysLeft, 0)}</span>
+      </div>
+      <div>
+        <p className="font-display text-sm font-semibold text-house-primary">魔導評価への秒読み</p>
+        <p className="text-sm">
+          {daysLeft > 0 ? `あと${daysLeft}日` : daysLeft === 0 ? "本日実施" : "実施済み"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function HomeTab({
+  overview,
+  unitById,
+  onAssignDaily,
+  onOfferMock,
+}: {
+  overview: CultivationOverview;
+  unitById: Map<string, LearningUnitView>;
+  onAssignDaily: () => void;
+  onOfferMock: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      {overview.upcomingExam && (
+        <GrimoireCard title="大広間">
+          <ExamCountdown scheduledDate={overview.upcomingExam.scheduledDate} />
+        </GrimoireCard>
+      )}
+
+      <GrimoireCard title="本日のデイリークエスト">
+        <div className="flex flex-col gap-3">
+          {overview.dailyMission ? (
+            <div className="flex flex-col gap-1">
+              {overview.dailyMission.targetLearningUnitIds.map((id) => {
+                const unit = unitById.get(id);
+                return (
+                  <p key={id} className="text-sm">
+                    {unit ? `${SUBJECT_ELEMENT[unit.subject]}の修練: 「${unit.title}」に挑め` : id}
+                  </p>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm opacity-80">まだ任務が発令されていません。</p>
+          )}
+          <button
+            type="button"
+            onClick={onAssignDaily}
+            className="rounded-md border border-house-primary px-3 py-1.5 text-sm font-semibold text-house-primary transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            デイリークエストを発令する
+          </button>
+        </div>
+      </GrimoireCard>
+
+      <GrimoireCard title="次なる試練 予想問題ミッション">
+        <div className="flex flex-col gap-3">
+          {overview.mockExamMission ? (
+            <p className="text-sm">対象単元数: {overview.mockExamMission.targetLearningUnitIds.length}件</p>
+          ) : (
+            <p className="text-sm opacity-80">まだ提示されていません。</p>
+          )}
+          <button
+            type="button"
+            onClick={onOfferMock}
+            className="rounded-md border border-house-primary px-3 py-1.5 text-sm font-semibold text-house-primary transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            予想問題ミッションを選択する
+          </button>
+        </div>
+      </GrimoireCard>
+    </div>
+  );
+}
+
+function LibraryTab({
+  overview,
+  selectedSubject,
+  onSelectSubject,
+  onRecordAttempt,
+  onComplete,
+  onFetchQuestions,
+}: {
+  overview: CultivationOverview;
+  selectedSubject: Subject | null;
+  onSelectSubject: (subject: Subject | null) => void;
+  onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
+  onComplete: (learningUnitId: string) => void;
+  onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
+}) {
+  if (!selectedSubject) {
+    return (
+      <GrimoireCard title="魔導書庫">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {SUBJECTS.map((subject) => (
+            <button
+              key={subject}
+              type="button"
+              onClick={() => onSelectSubject(subject)}
+              className="flex flex-col items-start gap-1 rounded-md border border-house-primary/50 p-3 text-left transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+            >
+              <span>
+                <span aria-hidden>{SUBJECT_EMOJI[subject]}</span>{" "}
+                <span className="font-display font-semibold">{SUBJECT_ELEMENT[subject]}</span>
+              </span>
+              <span className="text-xs opacity-70">{SUBJECT_LABEL[subject]}</span>
+            </button>
+          ))}
+        </div>
+      </GrimoireCard>
+    );
+  }
+
+  const ability = overview.abilities.find((a) => a.subject === selectedSubject);
+  const units = overview.units.filter((unit) => unit.subject === selectedSubject);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <button
+        type="button"
+        onClick={() => onSelectSubject(null)}
+        className="self-start text-sm text-house-primary underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+      >
+        ← 書庫に戻る
+      </button>
+
+      <GrimoireCard
+        title={`${SUBJECT_EMOJI[selectedSubject]} ${SUBJECT_ELEMENT[selectedSubject]}（${SUBJECT_LABEL[selectedSubject]}）`}
+      >
+        {ability && <AbilityBar subject={ability.subject} level={ability.level} />}
+      </GrimoireCard>
+
+      <GrimoireCard title="頻出の魔法陣演習">
+        <div className="flex flex-col gap-2">
+          {units.length === 0 ? (
+            <p className="text-sm opacity-70">この属性の単元はまだありません。</p>
+          ) : (
+            units.map((unit) => (
+              <LearningUnitRow
+                key={unit.id}
+                unit={unit}
+                onRecordAttempt={onRecordAttempt}
+                onComplete={onComplete}
+                onFetchQuestions={onFetchQuestions}
+              />
+            ))
+          )}
+        </div>
+      </GrimoireCard>
+    </div>
+  );
+}
+
+function TowerTab({
+  units,
+  filter,
+  onFilterChange,
+  onRecordAttempt,
+  onComplete,
+  onFetchQuestions,
+}: {
+  units: LearningUnitView[];
+  filter: Subject | "all";
+  onFilterChange: (filter: Subject | "all") => void;
+  onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
+  onComplete: (learningUnitId: string) => void;
+  onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
+}) {
+  const filtered = filter === "all" ? units : units.filter((unit) => unit.subject === filter);
+  const phantoms = filtered.filter(
+    (unit) => unit.attemptCount > 0 && unit.understandingRate < WEAK_UNDERSTANDING_THRESHOLD,
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <GrimoireCard title="幻影の塔">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onFilterChange("all")}
+              aria-pressed={filter === "all"}
+              className={`rounded-md border px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus ${
+                filter === "all"
+                  ? "border-house-primary bg-house-primary text-house-on-primary"
+                  : "border-house-primary/50 text-house-primary"
+              }`}
+            >
+              全属性
+            </button>
+            {SUBJECTS.map((subject) => (
+              <button
+                key={subject}
+                type="button"
+                onClick={() => onFilterChange(subject)}
+                aria-pressed={filter === subject}
+                className={`rounded-md border px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus ${
+                  filter === subject
+                    ? "border-house-primary bg-house-primary text-house-on-primary"
+                    : "border-house-primary/50 text-house-primary"
+                }`}
+              >
+                <span aria-hidden>{SUBJECT_EMOJI[subject]}</span> {SUBJECT_ELEMENT[subject]}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm opacity-85">
+            {phantoms.length === 0
+              ? "幻影は残っていません。塔は浄化されました。"
+              : `${phantoms.length}体のニガテの幻影が残っています。`}
+          </p>
+        </div>
+      </GrimoireCard>
+
+      {phantoms.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {phantoms.map((unit) => (
+            <LearningUnitRow
+              key={unit.id}
+              unit={unit}
+              onRecordAttempt={onRecordAttempt}
+              onComplete={onComplete}
+              onFetchQuestions={onFetchQuestions}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AcademyPage() {
   const {
     house,
@@ -180,6 +462,10 @@ export default function AcademyPage() {
     offerMockExam,
     fetchQuestions,
   } = useAcademyStore();
+
+  const [tab, setTab] = useState<Tab>("home");
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [towerFilter, setTowerFilter] = useState<Subject | "all">("all");
 
   useEffect(() => {
     if (isEnrolled) {
@@ -204,10 +490,8 @@ export default function AcademyPage() {
   }
 
   const unitById = new Map(overview.units.map((unit) => [unit.id, unit]));
-  const unitsBySubject = new Map<Subject, typeof overview.units>();
-  for (const unit of overview.units) {
-    unitsBySubject.set(unit.subject, [...(unitsBySubject.get(unit.subject) ?? []), unit]);
-  }
+  const onRecordAttempt = (id: string, isCorrect: boolean) => void recordAttemptFor(id, isCorrect);
+  const onComplete = (id: string) => void completeUnit(id);
 
   return (
     <ThemeProvider house={house ?? "RegiusCardis"}>
@@ -225,75 +509,55 @@ export default function AcademyPage() {
           </Link>
         </div>
 
-        <GrimoireCard title="科目別能力">
-          <div className="flex flex-col gap-3">
-            {overview.abilities.map((ability) => (
-              <AbilityBar key={ability.subject} subject={ability.subject} level={ability.level} />
-            ))}
-          </div>
-        </GrimoireCard>
+        <nav role="tablist" aria-label="修練場のタブ" className="flex gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 rounded-md border px-3 py-2 text-sm font-semibold transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus ${
+                tab === t.id
+                  ? "border-house-primary bg-house-primary text-house-on-primary"
+                  : "border-house-primary/50 text-house-primary"
+              }`}
+            >
+              <span aria-hidden>{t.emoji}</span> {t.label}
+            </button>
+          ))}
+        </nav>
 
-        <GrimoireCard title="ミッション">
-          <div className="flex flex-col gap-4">
-            <div>
-              <p className="mb-1 text-sm font-semibold text-house-primary">デイリーミッション</p>
-              {overview.dailyMission ? (
-                <p className="text-sm">
-                  おすすめ単元:{" "}
-                  {overview.dailyMission.targetLearningUnitIds
-                    .map((id) => unitById.get(id)?.title ?? id)
-                    .join("、")}
-                </p>
-              ) : (
-                <p className="text-sm opacity-80">まだ生成されていません。</p>
-              )}
-              <button
-                type="button"
-                onClick={() => void assignDailyMission()}
-                className="mt-2 rounded-md border border-house-primary px-3 py-1.5 text-sm font-semibold text-house-primary transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-              >
-                デイリーミッションを生成
-              </button>
-            </div>
+        {tab === "home" && (
+          <HomeTab
+            overview={overview}
+            unitById={unitById}
+            onAssignDaily={() => void assignDailyMission()}
+            onOfferMock={() => void offerMockExam()}
+          />
+        )}
 
-            <div>
-              <p className="mb-1 text-sm font-semibold text-house-primary">次テスト範囲 予想問題ミッション</p>
-              {overview.mockExamMission ? (
-                <p className="text-sm">
-                  対象単元数: {overview.mockExamMission.targetLearningUnitIds.length}件
-                </p>
-              ) : (
-                <p className="text-sm opacity-80">まだ提示されていません。</p>
-              )}
-              <button
-                type="button"
-                onClick={() => void offerMockExam()}
-                className="mt-2 rounded-md border border-house-primary px-3 py-1.5 text-sm font-semibold text-house-primary transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-              >
-                予想問題ミッションを選択する
-              </button>
-            </div>
-          </div>
-        </GrimoireCard>
+        {tab === "library" && (
+          <LibraryTab
+            overview={overview}
+            selectedSubject={selectedSubject}
+            onSelectSubject={setSelectedSubject}
+            onRecordAttempt={onRecordAttempt}
+            onComplete={onComplete}
+            onFetchQuestions={fetchQuestions}
+          />
+        )}
 
-        <GrimoireCard title="学習ユニット">
-          <div className="flex flex-col gap-5">
-            {[...unitsBySubject.entries()].map(([subject, units]) => (
-              <div key={subject} className="flex flex-col gap-2">
-                <p className="text-sm font-semibold text-house-primary">{SUBJECT_LABEL[subject]}</p>
-                {units.map((unit) => (
-                  <LearningUnitRow
-                    key={unit.id}
-                    unit={unit}
-                    onRecordAttempt={(id, isCorrect) => void recordAttemptFor(id, isCorrect)}
-                    onComplete={(id) => void completeUnit(id)}
-                    onFetchQuestions={fetchQuestions}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </GrimoireCard>
+        {tab === "tower" && (
+          <TowerTab
+            units={overview.units}
+            filter={towerFilter}
+            onFilterChange={setTowerFilter}
+            onRecordAttempt={onRecordAttempt}
+            onComplete={onComplete}
+            onFetchQuestions={fetchQuestions}
+          />
+        )}
       </div>
     </ThemeProvider>
   );
