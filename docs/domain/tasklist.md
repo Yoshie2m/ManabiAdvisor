@@ -211,3 +211,13 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
   - 幻影の塔: 全属性/属性別フィルタ、`attemptCount > 0 かつ understandingRate < 60` を「ニガテの幻影」として表示。正答で理解度が上がれば一覧から自然に消える（新しい永続状態は持たない）
 - [x] `docs/domain/glossary.md`にタブ構成・属性呼称・ニガテ/浄化のUI概念を追記
 - [x] `npx tsc --noEmit` / `npm test`（25ファイル・104テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 15. 学園案内コンテキスト（デザインシステムのTabBar/SubjectIcons適用）✅実装済み
+
+デザインシステムに追加された`TabBar`・`SubjectIcons`（`TabIcon`）コンポーネント仕様（README.md/preview.html/bundle.js/bundle.css/assets/Icons/README.md）を移植。
+
+- [x] `src/components/ui/TabIcon.tsx` を新規作成（24×24グリッドの線画ピクトグラム8種: タブ3種＋教科5種。パスデータはデザインシステムの`bundle.js`から移植）
+- [x] `src/components/ui/TabBar.tsx` を新規作成（`value`/`defaultValue`/`onChange`・`badges`対応。寮ごとの選択マーク演出は`globals.css`に追加）
+- [x] `src/app/academy/page.tsx` の自作タブ切り替え・絵文字を`TabBar`/`TabIcon`に置き換え。タブidを`hall`/`library`/`tower`（デザインシステムの既定値）に統一し、幻影の塔タブに残ニガテ数のバッジを表示
+- [x] `docs/domain/glossary.md`に`TabIcon`/`TabBar`を追記
+- [x] `npx tsc --noEmit` / `npm test`（25ファイル・104テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

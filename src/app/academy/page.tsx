@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
 import { QuizCard, type QuizKind } from "@/components/ui/QuizCard";
+import { TabBar } from "@/components/ui/TabBar";
+import { TabIcon, type TabIconName } from "@/components/ui/TabIcon";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import type { QuestionType } from "@/contexts/mana-cultivation/domain/models/QuestionType";
 import { SUBJECTS, type Subject } from "@/contexts/mana-cultivation/domain/models/Subject";
@@ -32,12 +34,12 @@ const SUBJECT_ELEMENT: Record<Subject, string> = {
   SocialStudies: "地誌・歴史（ちし・れきし）",
 };
 
-const SUBJECT_EMOJI: Record<Subject, string> = {
-  Japanese: "🔴",
-  Math: "🔵",
-  English: "🟢",
-  Science: "⚡",
-  SocialStudies: "🟤",
+const SUBJECT_ICON: Record<Subject, TabIconName> = {
+  Japanese: "kotodama",
+  Math: "suhi",
+  English: "ikaigo",
+  Science: "renkin",
+  SocialStudies: "chishi-rekishi",
 };
 
 const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
@@ -69,13 +71,7 @@ const GRADE_LABEL: Record<Grade, string> = {
 // 「ニガテの幻影」とみなす理解度のしきい値。一度も挑んでいない単元（attemptCount=0）は対象外。
 const WEAK_UNDERSTANDING_THRESHOLD = 60;
 
-type Tab = "home" | "library" | "tower";
-
-const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: "home", label: "大広間", emoji: "🏰" },
-  { id: "library", label: "魔導書庫", emoji: "📚" },
-  { id: "tower", label: "幻影の塔", emoji: "⚔️" },
-];
+type Tab = "hall" | "library" | "tower";
 
 function LearningUnitRow({
   unit,
@@ -243,7 +239,13 @@ function HomeTab({
   return (
     <div className="flex flex-col gap-6">
       {overview.upcomingExam && (
-        <GrimoireCard title="大広間">
+        <GrimoireCard
+          title={
+            <span className="flex items-center gap-2">
+              <TabIcon name="great-hall" size={24} /> 大広間
+            </span>
+          }
+        >
           <ExamCountdown scheduledDate={overview.upcomingExam.scheduledDate} />
         </GrimoireCard>
       )}
@@ -311,7 +313,13 @@ function LibraryTab({
 }) {
   if (!selectedSubject) {
     return (
-      <GrimoireCard title="魔導書庫">
+      <GrimoireCard
+        title={
+          <span className="flex items-center gap-2">
+            <TabIcon name="grimoire-library" size={24} /> 魔導書庫
+          </span>
+        }
+      >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {SUBJECTS.map((subject) => (
             <button
@@ -320,9 +328,9 @@ function LibraryTab({
               onClick={() => onSelectSubject(subject)}
               className="flex flex-col items-start gap-1 rounded-md border border-house-primary/50 p-3 text-left transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
             >
-              <span>
-                <span aria-hidden>{SUBJECT_EMOJI[subject]}</span>{" "}
-                <span className="font-display font-semibold">{SUBJECT_ELEMENT[subject]}</span>
+              <span className="flex items-center gap-2 text-house-accent">
+                <TabIcon name={SUBJECT_ICON[subject]} size={28} />
+                <span className="font-display font-semibold text-house-text">{SUBJECT_ELEMENT[subject]}</span>
               </span>
               <span className="text-xs opacity-70">{SUBJECT_LABEL[subject]}</span>
             </button>
@@ -346,7 +354,12 @@ function LibraryTab({
       </button>
 
       <GrimoireCard
-        title={`${SUBJECT_EMOJI[selectedSubject]} ${SUBJECT_ELEMENT[selectedSubject]}（${SUBJECT_LABEL[selectedSubject]}）`}
+        title={
+          <span className="flex items-center gap-2">
+            <TabIcon name={SUBJECT_ICON[selectedSubject]} size={24} />
+            {SUBJECT_ELEMENT[selectedSubject]}（{SUBJECT_LABEL[selectedSubject]}）
+          </span>
+        }
       >
         {ability && <AbilityBar subject={ability.subject} level={ability.level} />}
       </GrimoireCard>
@@ -394,7 +407,13 @@ function TowerTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <GrimoireCard title="幻影の塔">
+      <GrimoireCard
+        title={
+          <span className="flex items-center gap-2">
+            <TabIcon name="phantom-tower" size={24} /> 幻影の塔
+          </span>
+        }
+      >
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
             <button
@@ -421,7 +440,9 @@ function TowerTab({
                     : "border-house-primary/50 text-house-primary"
                 }`}
               >
-                <span aria-hidden>{SUBJECT_EMOJI[subject]}</span> {SUBJECT_ELEMENT[subject]}
+                <span className="inline-flex items-center gap-1">
+                  <TabIcon name={SUBJECT_ICON[subject]} size={16} /> {SUBJECT_ELEMENT[subject]}
+                </span>
               </button>
             ))}
           </div>
@@ -463,7 +484,7 @@ export default function AcademyPage() {
     fetchQuestions,
   } = useAcademyStore();
 
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTab] = useState<Tab>("hall");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [towerFilter, setTowerFilter] = useState<Subject | "all">("all");
 
@@ -492,6 +513,9 @@ export default function AcademyPage() {
   const unitById = new Map(overview.units.map((unit) => [unit.id, unit]));
   const onRecordAttempt = (id: string, isCorrect: boolean) => void recordAttemptFor(id, isCorrect);
   const onComplete = (id: string) => void completeUnit(id);
+  const phantomCount = overview.units.filter(
+    (unit) => unit.attemptCount > 0 && unit.understandingRate < WEAK_UNDERSTANDING_THRESHOLD,
+  ).length;
 
   return (
     <ThemeProvider house={house ?? "RegiusCardis"}>
@@ -509,26 +533,14 @@ export default function AcademyPage() {
           </Link>
         </div>
 
-        <nav role="tablist" aria-label="修練場のタブ" className="flex gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex-1 rounded-md border px-3 py-2 text-sm font-semibold transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus ${
-                tab === t.id
-                  ? "border-house-primary bg-house-primary text-house-on-primary"
-                  : "border-house-primary/50 text-house-primary"
-              }`}
-            >
-              <span aria-hidden>{t.emoji}</span> {t.label}
-            </button>
-          ))}
-        </nav>
+        <TabBar
+          value={tab}
+          onChange={(id) => setTab(id as Tab)}
+          badges={phantomCount > 0 ? { tower: phantomCount } : undefined}
+          className="rounded-md"
+        />
 
-        {tab === "home" && (
+        {tab === "hall" && (
           <HomeTab
             overview={overview}
             unitById={unitById}
