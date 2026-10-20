@@ -318,3 +318,14 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `npm run seed` でFirestoreに再投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）し、Firestoreへの直接クエリで5件の投入データを確認
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第13回ヒアリング節）を更新
 - [x] `npx tsc --noEmit` / `npm test`（29ファイル・126テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 23. 魔力修練コンテキスト（単語マスターIをLesson 2全域に拡張、一覧の並び順変更）✅実装済み
+
+ユーザーから前回分（5件）を含むLesson 2新出語彙の完全なリスト（`L2単語.rtf`、全104行）を受け取り、既存ユニットを更新。`specs/mana-cultivation.md`「単語マスターIをLesson 2全域（99語）に拡張」節を参照。あわせて、英語のように大半のユニットが「準備中」の科目で単語マスターが埋もれないよう、一覧の並び順変更の指示も受けた。
+
+- [x] `L2単語.rtf`を`textutil`でプレーンテキストに変換し、スクリプトで104行を機械的に突き合わせ、53〜57番が48〜52番（sponge/a pair of ~/scissors/cut/cloth）と完全に重複していることを検出。重複5件を除いた99件を採用
+- [x] `infrastructure/memory/seedData.ts`: `unit-english-vocab-1`の`title`を「単語マスターI（Lesson 2 新出語彙）」に変更、`ENGLISH_VOCAB_1_ITEMS`を5件→99件に差し替え（新しいユニット・QuestionTypeは追加しない）
+- [x] `src/app/academy/page.tsx`の`LibraryTab`: 単元一覧を`questionType`を持つユニット優先の並びに変更（`Array.prototype.sort`の安定ソートを利用し、同条件内の元の順序は維持）
+- [x] `npm run seed` でFirestoreに再投入（1回目はネットワークタイムアウトで失敗、自動リトライで成功。一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）し、Firestoreへの直接クエリで99件（重複なし）を確認
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`を更新
+- [x] `npx tsc --noEmit` / `npm test`（29ファイル・126テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

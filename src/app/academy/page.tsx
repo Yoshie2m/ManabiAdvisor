@@ -1339,7 +1339,11 @@ function LibraryTab({
   }
 
   const ability = overview.abilities.find((a) => a.subject === selectedSubject);
-  const units = overview.units.filter((unit) => unit.subject === selectedSubject);
+  // 実データ（questionType）を持つユニットを先に表示する（「準備中」のユニットが
+  // 多い科目で、実際に取り組めるコンテンツが埋もれないようにするため）。
+  const units = overview.units
+    .filter((unit) => unit.subject === selectedSubject)
+    .sort((a, b) => (a.questionType ? 0 : 1) - (b.questionType ? 0 : 1));
 
   return (
     <div className="flex flex-col gap-4">
