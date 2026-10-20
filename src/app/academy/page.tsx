@@ -1513,10 +1513,7 @@ export default function AcademyPage() {
     <ThemeProvider house={house ?? "RegiusCardis"}>
       <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 bg-house-bg p-8 text-house-text">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-display text-2xl">修練場</h1>
-            <p className="text-xs opacity-80">{GRADE_LABEL[overview.grade]}</p>
-          </div>
+          <p className="text-xs opacity-80">{GRADE_LABEL[overview.grade]}</p>
           <Link
             href="/"
             className="text-sm text-house-primary underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
