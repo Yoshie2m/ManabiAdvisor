@@ -12,7 +12,7 @@
 
 > 9番（鑑定UXの変更）により `ManaQuality` / `HouseAssignmentSpecification` / `decideHouse()` / `AssignHouse` は削除済みのため、それらに関するテスト項目はここから除外した。
 
-- [ ] `StudentId` の空文字バリデーション（まだ専用テストが無い）
+- [x] `StudentId` の空文字バリデーション（`StudentId.test.ts` を新規作成）
 - [x] `StudentAggregate.create(id, house)` が選んだ `house` をそのまま確定する（`StudentAggregate.test.ts`）
 - [x] `EnrollStudent` ユースケースのフロー（選んだ `house` での生成、`save` 呼び出し）（`EnrollStudent.test.ts`）
 
