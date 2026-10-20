@@ -11,8 +11,9 @@
 4. 「中1〜高3を貫く7段階の学年進行（Grade）のうち、プレ期間（小6）とセカンドグレード（中2）を選択できる」という**学年段階モデル**（ユーザーヒアリング済み、下記「意思決定の経緯（第3回）」参照）。
 5. 「英語に単語テスト・本文の和訳・英訳問題、数学に計算問題・文章題、国語に漢字の書き・読みという出題形式を追加する」という**出題形式モデル**（ユーザーヒアリング済み、下記「意思決定の経緯（第4回・第6回・第8回・第10回）」参照）。
 6. 「漢字小テスト（I・II）・英単語を1問ずつ解答・採点し、中断しても続きから再開できる」という**テスト受験フロー**（ユーザーヒアリング済み、下記「意思決定の経緯（第9回・第13回）」参照）。
+7. 「学習ユニットに、採点対象ではない読み物・解説（本文・文法ポイント）を持たせられる」という**参照用テキストモデル**（`LearningUnit.referenceText`。ユーザーヒアリング済み、下記「意思決定の経緯（第14回）」参照）。
 
-項目1〜4はドメイン層に加え、動作確認用のユースケース層・インメモリインフラ層・UIまで実装済み（`tasklist.md` 参照）。項目5・6もドメイン層・Firebaseインフラ層・UIまで実装済み。
+項目1〜4はドメイン層に加え、動作確認用のユースケース層・インメモリインフラ層・UIまで実装済み（`tasklist.md` 参照）。項目5〜7もドメイン層・Firebaseインフラ層・UIまで実装済み。
 
 ## 意思決定の経緯（第1回ヒアリング: 能力成長ルール）
 
@@ -297,6 +298,27 @@ class RecordQuizAttempts {
 2. **既存ユニットの更新**: 新しいユニットを作らず、既存の `unit-english-vocab-1` の `title` を「単語マスターI（Lesson 2 新出語彙）」に変更し、`Question`（旧5件→新99件）を上書きした。QuestionTypeやドメイン層の変更は無い。
 3. **一覧表示の並び順**: 英語のようにまだ大半のユニットが`questionType`を持たない（＝実データが無く「準備中」表示の）科目では、実際に取り組める単語マスターが埋もれてしまうため、`LibraryTab`の単元一覧を「`questionType`を持つユニットを先に表示する」よう並び替えるようユーザーから指示を受けた（ユーザー指示のため追加ヒアリングは行わず実装）。
 
+## 意思決定の経緯（第14回ヒアリング: Lesson 2 Scene 1の本文・文法・例文練習の追加）
+
+ユーザーから「Lesson 2 Scene 1（感嘆文）の会話文・文法ポイント・例文練習」のテキスト（`L2-S1.txt`）が提供され、実装前にユーザーへ2点を確認し、以下の方針で合意済み:
+
+1. **例文練習の採点方式**: 例文練習3問（日本語の感嘆文→英訳）は、第13回ヒアリングと同じ理由（英訳は言い回しの自由度が高く、完全一致判定だと不自然に不正解になる）で自由記述の自動採点に向かない。一方、単語マスターと同じ4択にすると英作文の練習にならない。ユーザーの指示により、**正解の英文を単語単位に分割してシャッフルし、選んだ順に並べさせる「並べ替え」形式**を採用する。並べた単語列（スペース結合）と正解文字列が完全一致するかどうかで自動判定できるため、自由記述と違って表記ゆれの問題が起きない。
+2. **会話文・文法ポイントの扱い**: 会話文（Tom/Grandma/Maryの会話）と文法ポイント（感嘆文の作り方の説明）は採点対象の「問題」ではなく読み物・解説として扱う。ユーザーの指示により、`LearningUnit`に新しい任意項目`referenceText`を追加し、既存の文法単元（`unit-english-l2-s1`、第4回ヒアリングの方針により`questionType`を持たない）にまとめて格納する。
+3. **単元の分離**: 単語テスト・本文の和訳・英訳問題は文法単元とは別のLearningUnitとして表現する、という第4回・第6回・第8回・第10回ヒアリングの既存方針に従い、例文練習（英作文の並べ替え）は`unit-english-l2-s1`とは別の新しいLearningUnit（`unit-english-l2-s1-practice`、`questionType: "PassageTranslationToEnglish"`）として登録する。この`QuestionType`は第4回ヒアリングで定義済みだが実データが無く未使用だったため、新しいQuestionTypeの追加は不要。
+
+### 実装
+
+**ドメイン層の変更**: `LearningUnit`に`referenceText: string | null`を追加（`LearningUnitProps.referenceText?: string`、`create`/`reconstruct`両方で受け取る）。採点や能力成長などの既存の不変条件には関与しない、単純な表示用データのため、`questionType`との組み合わせに関する新しい制約は設けない（両方null、両方あり、片方だけ、のいずれも許容）。`GetCultivationOverview`の`LearningUnitView`・`FirebaseLearningUnitRepository`・`scripts/seedFirestore.ts`に`referenceText`の読み書きを追加した。
+
+**UI層の変更（並べ替え採点はUI層の関心事。第13回ヒアリングの4択と同じ判断でドメイン層には追加しない）**:
+- `WordOrderQuizPanel`（`PassageTranslationToEnglish`専用）: 正解の英文を空白区切りでトークン化し`shuffledTokens`でシャッフルして「単語バンク」に表示、タップした順に「解答欄」へ積む。「採点する」ボタン（全トークンを使い切るまで無効）で判定し、正誤表示→「次へ」ボタンで確定、という単語マスターと同じ2段階方式（判定と前進を同じ関数で行うとフィードバックが一瞬で消えるバグを避けるため）。漢字「書き」・単語マスターと同じ`useSetBasedQuiz`を共有し、5問セット単位で進行・同期する（この単元は3問なので実質1セット）。
+- `LearningUnitRow`: `referenceText`を持つ単元には「本文・文法を見る」トグルボタンを表示する（`questionType`の有無に関係なく独立に表示できる）。「準備中」バッジの表示条件を「`questionType`も`referenceText`も無い」に変更した（`referenceText`だけ持つ文法単元が「準備中」と誤表示されないようにするため）。
+
+### テストで守る不変条件
+
+- `LearningUnit.create`/`reconstruct`は`referenceText`を省略した場合`null`になる（既存の挙動を壊さない）。
+- `LearningUnit.create`は`referenceText`があっても`questionType`が無い組み合わせを許容する（例外を投げない）。
+
 ## 値オブジェクト
 
 ### ExamType
@@ -416,6 +438,7 @@ class LearningUnit {
       title: string;
       difficulty: number;
       questionType?: QuestionType; // 省略可。指定する場合は SubjectQuestionTypePolicy を満たす必要がある
+      referenceText?: string; // 省略可。採点対象外の読み物・解説（第14回ヒアリングで追加）
     },
     subject: Subject,
   ): LearningUnit;
@@ -424,6 +447,7 @@ class LearningUnit {
   readonly title: string;
   readonly difficulty: number;
   readonly questionType: QuestionType | null; // 追加フィールド
+  readonly referenceText: string | null; // 追加フィールド（第14回ヒアリング）
 }
 ```
 
@@ -433,6 +457,7 @@ class LearningUnit {
 - **不変条件**: `questionType` を指定する場合、`subject` と `questionType` の組み合わせは `SubjectQuestionTypePolicy` を満たさなければならない（下記）。満たさない場合は生成時に例外。`questionType` を省略した場合はバリデーションなしで `null` になる（既存の文法単元向けの後方互換）。
 - 「不定詞」のような文法単元は `questionType = null` のまま。「単語テスト」「本文の和訳」「英訳問題」は、それぞれ `questionType` を持つ独立した `LearningUnit`（例: 同じ `curriculumId` に属するが別の `id` を持つレコード）として表現する。1つの `LearningUnit` が複数の `questionType` を持つことはない。
 - `difficulty`（難易度）の値域・単位は現行コードでは未規定。本追記のスコープ外（下記「スコープ外（残課題）」参照）。
+- `referenceText`（第14回ヒアリングで追加）は採点対象の`Question`ではない読み物・解説用の任意フィールドで、`questionType`の有無とは独立に持てる（両方null、両方あり、片方だけ、のいずれも許容）。バリデーションは無い（空文字も許容。表示用データのため）。
 
 ### UpcomingExam（新規）
 
@@ -699,12 +724,13 @@ interface CurriculumRepository {
 6. **進級（Gradeの変更）**: `CultivationProgress.initiate` で確定した `Grade` を後から変更する操作（例: セカンドグレード→サードグレードへの進級）。ヒアリングの結果、今回は不要と判断し見送った（第5回ヒアリング、`tasklist.md` 参照）。対応グレードのコンテンツ整備（次項）を優先する。
 7. **First/Third/Fourth/Fifth/Sixthグレードの中身**: `Grade` 型には定義済みだが、対応する `ExamType`・`Curriculum`・`LearningUnit` はまだ無い。学年を1つ開放するごとに、`ExamType` への追加・`GradeExamTypePolicy` の `REGULAR_EXAM_TYPE_BY_GRADE` への追加・該当カリキュラムの用意が必要。ヒアリングの結果、今回は不要と判断し見送った（`README.md`/`CLAUDE.md` 記載の対応学習領域の範囲外、`tasklist.md` 参照）。
 8. **大学受験（最終ゴール）**: 「シックスグレードの先にあるゴール」という位置づけのみで、型やExamTypeとしては未着手。ヒアリングの結果、今回も不要と判断し見送った（第1回ヒアリングの結論を再確認）。
-9. **問題文・単語リスト・正解などのコンテンツ本体**: `QuestionType` はあくまで「出題形式の種類」という構造情報のみ。実際の単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体は、`CLAUDE.md` の方針通りFirestoreに格納する想定。→ 第7回ヒアリングで`Question`エンティティとして実装済み（下記参照）。第8回ヒアリングで国語の漢字小テストI（書き56件・読み56件）、第10回ヒアリングで漢字小テストII（書き77件・読み77件）、第13回ヒアリングで英語の単語マスターI（5件、のちLesson 2全域の99件に更新）を追加済み。現状は数学の2ユニット・国語の4ユニット・英語の1ユニットに実データあり。英語の本文の和訳・英訳問題（`PassageTranslationToJapanese`/`ToEnglish`）はLearningUnitが現状存在せず引き続き対象外（将来追加する場合は同じ`Question`の仕組みで対応できる）。
+9. **問題文・単語リスト・正解などのコンテンツ本体**: `QuestionType` はあくまで「出題形式の種類」という構造情報のみ。実際の単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体は、`CLAUDE.md` の方針通りFirestoreに格納する想定。→ 第7回ヒアリングで`Question`エンティティとして実装済み（下記参照）。第8回ヒアリングで国語の漢字小テストI（書き56件・読み56件）、第10回ヒアリングで漢字小テストII（書き77件・読み77件）、第13回ヒアリングで英語の単語マスターI（5件、のちLesson 2全域の99件に更新）、第14回ヒアリングでLesson 2 Scene 1の本文・文法解説（`referenceText`）＋例文練習3問（`unit-english-l2-s1-practice`、`PassageTranslationToEnglish`）を追加済み。現状は数学の2ユニット・国語の4ユニット・英語の2ユニット（単語マスターI・Lesson 2 Scene 1例文練習）に実データあり。英語の本文の和訳（`PassageTranslationToJapanese`）はLearningUnitが現状存在せず引き続き対象外（将来追加する場合は同じ`Question`の仕組みで対応できる）。
 10. **English以外の科目のQuestionType**: `SubjectQuestionTypePolicy` は当初 `English` のみ対応表を持っていた。他科目に出題形式を追加する場合は、改めてヒアリングのうえ `QUESTION_TYPES_BY_SUBJECT` に追加する。→ 第6回ヒアリングで `Math`（`Calculation`/`WordProblem`）、第8回ヒアリングで `Japanese`（`KanjiWriting`/`KanjiReading`）を追加済み（下記参照）。`Science`/`SocialStudies` は引き続き未対応。
 11. **テスト受験フローの対象範囲**: `QuizSession` によるテスト受験フローは `questionType` を持つユニット全般に汎用的に動作するため、第10回ヒアリングで追加した漢字小テストIIにもコード変更無しでそのまま適用された。数学の計算問題・文章題への展開も同じ仕組みを流用できるが今回は未着手。
 12. **学習ユニット一覧の「進行中」バッジ表示**: 中断中のテストに「進行中40%」のようなバッジを表示するアイデアは、第9回ヒアリングの結果、今回は不要と判断し見送った（任意の改善として後回し）。
 13. **残りの小テスト**: 小テストIII以降は、ユーザーからデータが提供された時点で同じ手順（`KANJI_TEST_n_ITEMS`の追加）で追加する。
 14. **学習ユニット一覧の手動「正解」「不正解」「単元完了」ボタンの廃止**: 実際のテスト受験フロー（「テストを受ける」＝`SyncQuizProgress`/`SelfGradedQuizPanel`）が整ったことで、生徒が問題を解かずに自己申告だけで理解度・能力値を操作できてしまう手動ボタンは不要と判断しユーザー指示により削除した。`questionType` を持つユニットは「テストを受ける」（＋「問題を見る」）のみを表示し、`questionType` を持たない（実データが無い）ユニットは「準備中」と表示するのみで、どの操作も提供しない。これに伴い `CompleteLearningUnit` ユースケース（＋テスト）を削除した。`recordAttempt`（理解度記録）は「問題を見る」内のQuizCardの自己採点（覚えた／もう一度）からは引き続き呼ばれる。
-15. **英語の残り4モード（シャドーイング／文法・Speakチェック／本文・翻訳トレーニング／ニガテ復習）**: 第13回ヒアリングで「単語マスター」のみ先行実装し、残りは後日改めてヒアリングのうえ着手する方針。シャドーイングは教科書音声素材の準備とブラウザの音声認識対応状況（iOS Safariの制約）、ニガテ復習は問題単位の履歴記録という新しいドメイン概念が必要になるなど、モードごとに前提条件が異なる。
+15. **英語の残り3モード（シャドーイング／文法・Speakチェック／ニガテ復習）**: 第13回ヒアリングで「単語マスター」のみ先行実装し、残りは後日改めてヒアリングのうえ着手する方針。シャドーイングは教科書音声素材の準備とブラウザの音声認識対応状況（iOS Safariの制約）、ニガテ復習は問題単位の履歴記録という新しいドメイン概念が必要になるなど、モードごとに前提条件が異なる。→ 第14回ヒアリングで「本文・翻訳トレーニング」はLesson 2 Scene 1に限り先行実装した（`referenceText`による本文・文法解説の表示＋`WordOrderQuizPanel`による例文練習）が、他のLesson・Sceneへの展開は未着手（データが提供された時点で同じ手順で追加する）。
+16. **`LearningUnit.referenceText`のバリデーション**: 第14回ヒアリングで追加した任意フィールドだが、`Question.prompt`/`answer`のような「空文字なら例外」という不変条件は設けていない（採点に関わらない表示用データのため）。将来、空文字のreferenceTextを意図せず登録してしまう運用上の問題が出た場合は改めて検討する。
 
 これらは `tasklist.md` に別タスクとして追加する。

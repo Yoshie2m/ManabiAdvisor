@@ -23,6 +23,7 @@ export type LearningUnitView = {
   subject: Subject;
   difficulty: Difficulty;
   questionType: QuestionType | null;
+  referenceText: string | null;
   understandingRate: number;
   attemptCount: number;
 };
@@ -97,6 +98,7 @@ export class GetCultivationOverview {
         subject: subjectByCurriculumId.get(unit.curriculumId) as Subject,
         difficulty: unit.difficulty,
         questionType: unit.questionType,
+        referenceText: unit.referenceText,
         understandingRate: progress.getUnderstanding(unit.id).rate,
         attemptCount: progress.getUnderstanding(unit.id).totalCount,
       })),

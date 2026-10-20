@@ -14,6 +14,7 @@ type LearningUnitDocument = {
   title: string;
   difficulty: Difficulty;
   questionType: QuestionType | null;
+  referenceText?: string | null;
 };
 
 function toLearningUnit(id: string, data: DocumentData): LearningUnit {
@@ -24,6 +25,7 @@ function toLearningUnit(id: string, data: DocumentData): LearningUnit {
     title: document.title,
     difficulty: document.difficulty,
     questionType: document.questionType ?? undefined,
+    referenceText: document.referenceText ?? undefined,
   });
 }
 

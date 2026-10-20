@@ -42,6 +42,29 @@ export const curricula: Curriculum[] = [
   }),
 ];
 
+// Lesson 2 Scene 1（感嘆文）の本文・文法ポイント。採点対象の問題ではなく、
+// クイズ開始前に読み物として表示する参照用テキスト（ユーザー提供の
+// L2-S1.txtに基づく）。
+const LESSON2_SCENE1_REFERENCE_TEXT = `【文法】感嘆文：驚き・喜び・悲しみなどの感情を表す文
+・なんて～なのだろう。 → [ How + 形容詞/副詞 ! ]
+・なんて～な……なのだろう。 → [ What (a/an) + 形容詞 + 名詞 [ + S V ] ! ]
+
+【会話文】
+Tom: Happy birthday, Grandma!
+(He hands her the roses.) （彼女にバラを手渡す）
+Grandma: Oh my! What beautiful roses! （なんてきれいなバラだろう！） Thank you so much, Tom!
+(Grandma takes the flowers and kisses Tom.)
+Mary: Happy birthday, Grandma!
+(Mary kisses Grandma and gives her the large present.)
+Grandma: Oh, thank you! (She opens it.) Oh, what a beautiful painting! （絵画）
+Mary: It's just a poster, but I found a nice frame for it. （額縁）
+Grandma: Oh, what lovely colors! It'll look perfect on that wall.
+
+【場面（point）】
+・It's Grandma's birthday.
+・Tom and Mary are waiting for her in the living room.
+・Tom is holding a dozen roses and there is a large present on the table.`;
+
 export const learningUnits: LearningUnit[] = [
   // PROGRESS 21 Book 2 Lesson 1〜5。各Lessonは2つのScene（文法点）からなる。
   LearningUnit.create(
@@ -53,7 +76,26 @@ export const learningUnits: LearningUnit[] = [
     "English",
   ),
   LearningUnit.create(
-    { id: "unit-english-l2-s1", curriculumId: "curriculum-english", title: "Lesson 2 Scene 1: 感嘆文 (What / How)", difficulty: 2 },
+    {
+      id: "unit-english-l2-s1",
+      curriculumId: "curriculum-english",
+      title: "Lesson 2 Scene 1: 感嘆文 (What / How)",
+      difficulty: 2,
+      referenceText: LESSON2_SCENE1_REFERENCE_TEXT,
+    },
+    "English",
+  ),
+  // Lesson 2 Scene 1の例文練習（感嘆文の英作文、全3問）。文法単元
+  // (unit-english-l2-s1) とは別の、QuestionTypeを持つ単元として登録する
+  // （第4回・第6回・第8回・第10回ヒアリングの方針に従う）。
+  LearningUnit.create(
+    {
+      id: "unit-english-l2-s1-practice",
+      curriculumId: "curriculum-english",
+      title: "Lesson 2 Scene 1 例文練習（感嘆文の英作文）",
+      difficulty: 3,
+      questionType: "PassageTranslationToEnglish",
+    },
     "English",
   ),
   LearningUnit.create(
@@ -646,6 +688,26 @@ const englishVocab1Questions: Question[] = ENGLISH_VOCAB_1_ITEMS.map((item, inde
   }),
 );
 
+// Lesson 2 Scene 1の例文練習（教科書右ページ「例文練習」3問）。answerは
+// 単語の並べ替え問題のお手本順序として使う（UI側でトークンに分割しシャッフルする）。
+const LESSON2_SCENE1_PRACTICE_ITEMS: { prompt: string; answer: string }[] = [
+  { prompt: "サラはなんて静かな赤ちゃんなのでしょう。", answer: "What a quiet baby Sarah is!" },
+  {
+    prompt: "スクルージさんはなんてわがままな男だったのでしょう。",
+    answer: "What a selfish man Mr. Scrooge was!",
+  },
+  { prompt: "(これらは) なんてかっこいいジーンズなのでしょう。", answer: "What neat jeans these are!" },
+];
+
+const lesson2Scene1PracticeQuestions: Question[] = LESSON2_SCENE1_PRACTICE_ITEMS.map((item, index) =>
+  Question.create({
+    id: `q-english-l2-s1-practice-${String(index + 1).padStart(2, "0")}`,
+    learningUnitId: "unit-english-l2-s1-practice",
+    prompt: item.prompt,
+    answer: item.answer,
+  }),
+);
+
 // 数学の出題形式別ユニット（unit-math-calc-1 / unit-math-word-1）向けの実際の問題例。
 export const questions: Question[] = [
   Question.create({
@@ -683,4 +745,5 @@ export const questions: Question[] = [
   ...kanjiTest2WriteQuestions,
   ...kanjiTest2ReadQuestions,
   ...englishVocab1Questions,
+  ...lesson2Scene1PracticeQuestions,
 ];

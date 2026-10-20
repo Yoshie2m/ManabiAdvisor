@@ -1071,6 +1071,286 @@ function MultipleChoiceQuizPanel({ unit, onClose }: { unit: LearningUnitView; on
   );
 }
 
+// 英訳問題（PassageTranslationToEnglish）は言い回しの自由度が高く自由記述の
+// 完全一致判定に向かないため、正解の英文を単語単位に分割してシャッフルし、
+// 単語を選んだ順に並べさせる「並べ替え」形式にする。正誤判定は並べた単語列と
+// 正解文の単語列が完全一致するかどうかで自動判定できる（第14回ヒアリング）。
+type WordToken = { key: number; text: string };
+
+function tokensFor(answer: string): WordToken[] {
+  return answer.split(/\s+/).filter(Boolean).map((text, key) => ({ key, text }));
+}
+
+function shuffledTokens(tokens: WordToken[]): WordToken[] {
+  const shuffled = [...tokens];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function WordOrderStep({
+  question,
+  bank,
+  arranged,
+  checked,
+  isCorrect,
+  onPick,
+  onRemove,
+  onReset,
+  onCheck,
+  disabled = false,
+}: {
+  question: QuestionView;
+  bank: WordToken[];
+  arranged: WordToken[];
+  checked: boolean;
+  isCorrect: boolean;
+  onPick: (token: WordToken) => void;
+  onRemove: (token: WordToken) => void;
+  onReset: () => void;
+  onCheck: () => void;
+  disabled?: boolean;
+}) {
+  const preset = QUIZ_CARD_PRESET_BY_QUESTION_TYPE.PassageTranslationToEnglish;
+  return (
+    <>
+      <p className="text-xs opacity-85">次の日本語を、下の単語を並べ替えて英文にしなさい。</p>
+      <HighlightedPrompt text={question.prompt} lang={preset.promptLang} highlightWhole />
+      <div className="flex min-h-12 flex-wrap items-center gap-2 rounded-md border border-house-primary/40 bg-house-bg/40 p-2">
+        {arranged.length === 0 && <span className="text-xs opacity-50">（ここに単語をタップして並べる）</span>}
+        {arranged.map((token) => (
+          <button
+            key={token.key}
+            type="button"
+            onClick={() => onRemove(token)}
+            disabled={disabled || checked}
+            lang={preset.answerLang}
+            className="rounded-md border border-house-primary bg-house-primary/10 px-2 py-1 text-sm disabled:cursor-default focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            {token.text}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {bank.map((token) => (
+          <button
+            key={token.key}
+            type="button"
+            onClick={() => onPick(token)}
+            disabled={disabled || checked}
+            lang={preset.answerLang}
+            className="rounded-md border border-house-primary/60 px-2 py-1 text-sm hover:opacity-80 disabled:cursor-default disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            {token.text}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onReset}
+          disabled={disabled || checked || arranged.length === 0}
+          className="rounded-md border border-house-primary/60 px-3 py-1.5 text-xs hover:opacity-80 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+        >
+          やり直す
+        </button>
+        {!checked && (
+          <button
+            type="button"
+            onClick={onCheck}
+            disabled={disabled || bank.length > 0}
+            className="rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            採点する
+          </button>
+        )}
+      </div>
+      {checked && (
+        <p className={isCorrect ? "font-semibold text-house-accent" : "font-semibold opacity-85"}>
+          {isCorrect ? "○ 正解！" : `✕ 不正解（正解: ${question.answer}）`}
+        </p>
+      )}
+    </>
+  );
+}
+
+function WordOrderQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClose: () => void }) {
+  const [arranged, setArranged] = useState<WordToken[]>([]);
+  const [checked, setChecked] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [bonusArranged, setBonusArranged] = useState<WordToken[]>([]);
+  const [bonusChecked, setBonusChecked] = useState(false);
+  const [bonusIsCorrect, setBonusIsCorrect] = useState(false);
+  const quiz = useSetBasedQuiz(unit, {
+    onQuestionChange: () => {
+      setArranged([]);
+      setChecked(false);
+      setIsCorrect(false);
+      setBonusArranged([]);
+      setBonusChecked(false);
+      setBonusIsCorrect(false);
+    },
+  });
+  const { boot, questions, session, displayedIndex, subPhase } = quiz;
+
+  const question = questions[displayedIndex];
+  const shuffled = useMemo(() => (question ? shuffledTokens(tokensFor(question.answer)) : []), [question]);
+  const bonusQuestion = quiz.bonusQueue[quiz.bonusIndex];
+  const bonusShuffled = useMemo(
+    () => (bonusQuestion ? shuffledTokens(tokensFor(bonusQuestion.answer)) : []),
+    [bonusQuestion],
+  );
+
+  if (boot.phase === "loading" || !session) {
+    return <p className="text-xs opacity-70">読込中…</p>;
+  }
+
+  if (boot.phase === "resume-dialog") {
+    return (
+      <QuizResumeDialog
+        currentIndex={session.currentIndex}
+        onResume={() => {
+          quiz.resetForNewAttempt();
+          boot.setPhase("ready");
+        }}
+        onRestart={() => void quiz.restartFromBeginning()}
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (subPhase === "bonus-round") {
+    const bonusArrangedKeys = new Set(bonusArranged.map((t) => t.key));
+    return (
+      <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+        <span className="tabular-nums text-xs text-house-primary">
+          やり直し {quiz.bonusIndex + 1} / {quiz.bonusQueue.length}問
+        </span>
+        <WordOrderStep
+          question={bonusQuestion}
+          bank={bonusShuffled.filter((t) => !bonusArrangedKeys.has(t.key))}
+          arranged={bonusArranged}
+          checked={bonusChecked}
+          isCorrect={bonusIsCorrect}
+          onPick={(token) => setBonusArranged((prev) => [...prev, token])}
+          onRemove={(token) => setBonusArranged((prev) => prev.filter((t) => t.key !== token.key))}
+          onReset={() => setBonusArranged([])}
+          onCheck={() => {
+            const result = bonusArranged.map((t) => t.text).join(" ") === bonusQuestion.answer;
+            setBonusIsCorrect(result);
+            setBonusChecked(true);
+          }}
+        />
+        {bonusChecked && (
+          <button
+            type="button"
+            onClick={() => void quiz.gradeBonus(bonusIsCorrect)}
+            className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            次へ
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (subPhase === "set-result" || subPhase === "unit-finished") {
+    return (
+      <SetResultScreen
+        subPhase={subPhase}
+        setReview={quiz.setReview}
+        overallCount={quiz.overallCount}
+        hasMoreSets={displayedIndex < questions.length}
+        onNext={() => {
+          quiz.setSetReview([]);
+          quiz.setSubPhase("question");
+        }}
+        onRetryWrong={() =>
+          quiz.startBonusRound(
+            quiz.setReview.filter((item) => !item.isCorrect).map((item) => item.question),
+            subPhase,
+          )
+        }
+        onRetrySet={() => quiz.startBonusRound(quiz.setReview.map((item) => item.question), subPhase)}
+        onClose={onClose}
+      />
+    );
+  }
+
+  const arrangedKeys = new Set(arranged.map((t) => t.key));
+  const { setStart, setEnd } = quiz.setBoundsFor(displayedIndex);
+  const setSize = setEnd - setStart;
+  const positionInSet = displayedIndex - setStart + 1;
+  const progressPercent = Math.round(((positionInSet - 1) / setSize) * 100);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => void quiz.handleCloseDuringSet(onClose)}
+          disabled={quiz.isSyncing}
+          aria-label="テストを閉じる"
+          className="text-xs opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+        >
+          ◀ 戻る
+        </button>
+        <div className="text-right">
+          <span className="tabular-nums text-xs text-house-primary">
+            {positionInSet} / {setSize}問
+          </span>
+          <p className="text-[10px] opacity-60">
+            全{questions.length}問中{displayedIndex + 1}問目
+          </p>
+        </div>
+      </div>
+
+      <div
+        role="progressbar"
+        aria-valuenow={progressPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-2 w-full overflow-hidden rounded-full bg-house-primary/20"
+      >
+        <div
+          className="h-full rounded-full bg-house-accent transition-[width] motion-reduce:transition-none"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      <WordOrderStep
+        question={question}
+        bank={shuffled.filter((t) => !arrangedKeys.has(t.key))}
+        arranged={arranged}
+        checked={checked}
+        isCorrect={isCorrect}
+        onPick={(token) => setArranged((prev) => [...prev, token])}
+        onRemove={(token) => setArranged((prev) => prev.filter((t) => t.key !== token.key))}
+        onReset={() => setArranged([])}
+        onCheck={() => {
+          const result = arranged.map((t) => t.text).join(" ") === question.answer;
+          setIsCorrect(result);
+          setChecked(true);
+        }}
+        disabled={quiz.isSyncing}
+      />
+
+      {checked && (
+        <button
+          type="button"
+          onClick={() => void quiz.grade(isCorrect)}
+          disabled={quiz.isSyncing}
+          className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+        >
+          {quiz.isSyncing ? "保存中…" : "次へ"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function LearningUnitRow({
   unit,
   onRecordAttempt,
@@ -1083,6 +1363,7 @@ function LearningUnitRow({
   const [questions, setQuestions] = useState<QuestionView[] | null>(null);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [isTakingQuiz, setIsTakingQuiz] = useState(false);
+  const [isShowingReference, setIsShowingReference] = useState(false);
 
   async function toggleQuestions() {
     if (questions) {
@@ -1118,6 +1399,15 @@ function LearningUnitRow({
           </p>
         </div>
         <div className="flex gap-2">
+          {unit.referenceText && (
+            <button
+              type="button"
+              onClick={() => setIsShowingReference((prev) => !prev)}
+              className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+            >
+              {isShowingReference ? "読み物を閉じる" : "本文・文法を見る"}
+            </button>
+          )}
           {unit.questionType && (
             <button
               type="button"
@@ -1137,11 +1427,17 @@ function LearningUnitRow({
               {isLoadingQuestions ? "読込中…" : questions ? "問題を閉じる" : "問題を見る"}
             </button>
           )}
-          {!unit.questionType && (
+          {!unit.questionType && !unit.referenceText && (
             <span className="rounded-full bg-house-primary/10 px-2 py-0.5 text-xs opacity-60">準備中</span>
           )}
         </div>
       </div>
+
+      {isShowingReference && unit.referenceText && (
+        <div className="whitespace-pre-wrap rounded-md border border-house-primary/20 bg-house-bg/40 p-3 text-xs leading-relaxed">
+          {unit.referenceText}
+        </div>
+      )}
 
       {isTakingQuiz && unit.questionType && (
         <div className="border-t border-house-primary/20 pt-3">
@@ -1149,6 +1445,8 @@ function LearningUnitRow({
             <SelfGradedQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
           ) : unit.questionType === "VocabularyTest" ? (
             <MultipleChoiceQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
+          ) : unit.questionType === "PassageTranslationToEnglish" ? (
+            <WordOrderQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
           ) : (
             <QuizTakingPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
           )}

@@ -43,6 +43,7 @@ async function main() {
       title: unit.title,
       difficulty: unit.difficulty,
       questionType: unit.questionType,
+      referenceText: unit.referenceText,
     });
   }
 

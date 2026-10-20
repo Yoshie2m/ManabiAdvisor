@@ -329,3 +329,17 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `npm run seed` でFirestoreに再投入（1回目はネットワークタイムアウトで失敗、自動リトライで成功。一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）し、Firestoreへの直接クエリで99件（重複なし）を確認
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`を更新
 - [x] `npx tsc --noEmit` / `npm test`（29ファイル・126テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 24. 魔力修練コンテキスト（Lesson 2 Scene 1の本文・文法・例文練習の追加）✅実装済み
+
+ユーザーから「Lesson 2 Scene 1（感嘆文）」の会話文・文法ポイント・例文練習のテキスト（`L2-S1.txt`）が提供され、採点方式と保存場所の2点をヒアリング。`specs/mana-cultivation.md`「意思決定の経緯（第14回ヒアリング）」節を参照。
+
+- [x] `domain/models/LearningUnit.ts`: `referenceText?: string`を`LearningUnitProps`・`create`・`reconstruct`に追加（採点対象外の読み物・解説。`questionType`とは独立）＋テスト2件追加
+- [x] `usecase/GetCultivationOverview/GetCultivationOverview.ts`: `LearningUnitView`に`referenceText`を追加し`execute`内でマッピング
+- [x] `infrastructure/firebase/FirebaseLearningUnitRepository.ts`・`scripts/seedFirestore.ts`: `referenceText`の読み書きを追加
+- [x] `infrastructure/memory/seedData.ts`: 既存の文法単元`unit-english-l2-s1`に`referenceText`（会話文＋文法ポイント）を追加。例文練習3問用に新しい学習ユニット`unit-english-l2-s1-practice`（`questionType: "PassageTranslationToEnglish"`）を追加し`Question`を3件登録（第4回ヒアリング以来の「文法単元とは別のLearningUnitとして表現する」方針に従う）
+- [x] `src/app/academy/page.tsx`: 正解の英文を単語トークンに分割・シャッフルして並べさせる`WordOrderQuizPanel`（＋`WordOrderStep`、`tokensFor`/`shuffledTokens`）を新規作成。「採点する」で正誤判定、「次へ」で確定という単語マスターと同じ2段階方式。`useSetBasedQuiz`を共有
+- [x] `LearningUnitRow`: `unit.questionType === "PassageTranslationToEnglish"`の分岐を追加。`referenceText`を持つ単元に「本文・文法を見る」トグルを追加し、「準備中」バッジの表示条件を「`questionType`も`referenceText`も無い」に変更
+- [x] `npm run seed` でFirestoreに再投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第14回ヒアリング節）を更新
+- [x] `npx tsc --noEmit` / `npm test`（29ファイル・128テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
