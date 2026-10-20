@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
@@ -513,14 +513,94 @@ function SetReviewList({ items }: { items: SetReviewItem[] }) {
   );
 }
 
-function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClose: () => void }) {
+function SetResultScreen({
+  subPhase,
+  setReview,
+  overallCount,
+  hasMoreSets,
+  onNext,
+  onRetryWrong,
+  onRetrySet,
+  onClose,
+}: {
+  subPhase: "set-result" | "unit-finished";
+  setReview: SetReviewItem[];
+  overallCount: { correct: number; total: number };
+  hasMoreSets: boolean;
+  onNext: () => void;
+  onRetryWrong: () => void;
+  onRetrySet: () => void;
+  onClose: () => void;
+}) {
+  const setCorrect = setReview.filter((item) => item.isCorrect).length;
+  const setTotal = setReview.length;
+  const isPerfect = setCorrect === setTotal;
+  const hasWrong = setCorrect < setTotal;
+
+  return (
+    <div className="flex flex-col gap-4 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+      <div className="flex flex-col items-center gap-1 text-center">
+        <p className="font-display text-2xl font-semibold motion-safe:animate-[pulse_0.6s_ease-in-out_1]">
+          {setTotal}問中 {setCorrect}問 正解！
+        </p>
+        <p className="text-xs opacity-80">
+          {subPhase === "unit-finished"
+            ? `お疲れさまでした。全体: ${overallCount.correct} / ${overallCount.total}問正解`
+            : isPerfect
+              ? "たいへんよくできました！"
+              : "どんまい！次がんばろう"}
+        </p>
+      </div>
+
+      <SetReviewList items={setReview} />
+
+      <div className="flex flex-col gap-2">
+        {subPhase === "set-result" && hasMoreSets && (
+          <button
+            type="button"
+            onClick={onNext}
+            className="rounded-md bg-house-primary px-3 py-2 text-sm font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            次の5問に進む
+          </button>
+        )}
+        {hasWrong && (
+          <button
+            type="button"
+            onClick={onRetryWrong}
+            className="rounded-md border border-house-primary/60 px-3 py-2 text-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            間違えた問題だけをやり直す
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onRetrySet}
+          className="rounded-md border border-house-primary/60 px-3 py-2 text-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+        >
+          もう一度この5問を解く
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-xs opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+        >
+          テスト選択へ戻る
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 5問セット単位で進行・同期する出題形式（漢字「書き」のセルフ採点、単語マスターの4択など）が
+// 共有する状態管理。各パネルは「1問ぶんの見た目・採点トリガー」だけを自分で実装する。
+function useSetBasedQuiz(unit: LearningUnitView, options: { onQuestionChange?: () => void } = {}) {
   const syncQuizProgressFor = useAcademyStore((state) => state.syncQuizProgressFor);
   const recordQuizAttemptsFor = useAcademyStore((state) => state.recordQuizAttemptsFor);
   const boot = useQuizBootstrap(unit);
   const { questions, session, setSession, displayedIndex, setDisplayedIndex } = boot;
 
   const [subPhase, setSubPhase] = useState<SelfGradedSubPhase>("question");
-  const [revealed, setRevealed] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [overallCount, setOverallCount] = useState({ correct: 0, total: 0 });
   const [setReview, setSetReview] = useState<SetReviewItem[]>([]);
@@ -529,15 +609,14 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
 
   const [bonusQueue, setBonusQueue] = useState<QuestionView[]>([]);
   const [bonusIndex, setBonusIndex] = useState(0);
-  const [bonusRevealed, setBonusRevealed] = useState(false);
   const bonusResultsRef = useRef<QuizAnswerResult[]>([]);
   const [returnSubPhase, setReturnSubPhase] = useState<"set-result" | "unit-finished">("set-result");
 
   function resetForNewAttempt() {
     pendingResultsRef.current = [];
     setSetReview([]);
-    setRevealed(false);
     setSubPhase("question");
+    options.onQuestionChange?.();
   }
 
   async function restartFromBeginning() {
@@ -572,7 +651,7 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
         const nextSession = await syncQuizProgressFor(unit.id, results, questions.length);
         setSession(nextSession);
         setDisplayedIndex(nextIndex);
-        setRevealed(false);
+        options.onQuestionChange?.();
         setSubPhase(nextSession === null ? "unit-finished" : "set-result");
       } finally {
         setIsSyncing(false);
@@ -580,12 +659,12 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
       }
     } else {
       setDisplayedIndex(nextIndex);
-      setRevealed(false);
+      options.onQuestionChange?.();
       hasAnsweredCurrentRef.current = false;
     }
   }
 
-  async function handleCloseDuringSet() {
+  async function handleCloseDuringSet(onClose: () => void) {
     setIsSyncing(true);
     try {
       if (pendingResultsRef.current.length > 0) {
@@ -602,7 +681,7 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
   function startBonusRound(queue: QuestionView[], fromPhase: "set-result" | "unit-finished") {
     setBonusQueue(queue);
     setBonusIndex(0);
-    setBonusRevealed(false);
+    options.onQuestionChange?.();
     bonusResultsRef.current = [];
     setReturnSubPhase(fromPhase);
     setSubPhase("bonus-round");
@@ -625,10 +704,44 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
       }
     } else {
       setBonusIndex(nextIndex);
-      setBonusRevealed(false);
+      options.onQuestionChange?.();
       hasAnsweredCurrentRef.current = false;
     }
   }
+
+  return {
+    boot,
+    questions,
+    session,
+    displayedIndex,
+    subPhase,
+    setSubPhase,
+    isSyncing,
+    overallCount,
+    setReview,
+    setSetReview,
+    bonusQueue,
+    bonusIndex,
+    resetForNewAttempt,
+    restartFromBeginning,
+    setBoundsFor,
+    grade,
+    handleCloseDuringSet,
+    startBonusRound,
+    gradeBonus,
+  };
+}
+
+function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClose: () => void }) {
+  const [revealed, setRevealed] = useState(false);
+  const [bonusRevealed, setBonusRevealed] = useState(false);
+  const quiz = useSetBasedQuiz(unit, {
+    onQuestionChange: () => {
+      setRevealed(false);
+      setBonusRevealed(false);
+    },
+  });
+  const { boot, questions, session, displayedIndex, subPhase } = quiz;
 
   if (boot.phase === "loading" || !session) {
     return <p className="text-xs opacity-70">読込中…</p>;
@@ -639,104 +752,57 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
       <QuizResumeDialog
         currentIndex={session.currentIndex}
         onResume={() => {
-          resetForNewAttempt();
+          quiz.resetForNewAttempt();
           boot.setPhase("ready");
         }}
-        onRestart={() => void restartFromBeginning()}
+        onRestart={() => void quiz.restartFromBeginning()}
         onClose={onClose}
       />
     );
   }
 
   if (subPhase === "bonus-round") {
-    const bonusQuestion = bonusQueue[bonusIndex];
+    const bonusQuestion = quiz.bonusQueue[quiz.bonusIndex];
     return (
       <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
         <span className="tabular-nums text-xs text-house-primary">
-          やり直し {bonusIndex + 1} / {bonusQueue.length}問
+          やり直し {quiz.bonusIndex + 1} / {quiz.bonusQueue.length}問
         </span>
         <SelfGradedQuestionStep
           question={bonusQuestion}
           revealed={bonusRevealed}
           onReveal={() => setBonusRevealed(true)}
-          onGrade={(isCorrect) => void gradeBonus(isCorrect)}
+          onGrade={(isCorrect) => void quiz.gradeBonus(isCorrect)}
         />
       </div>
     );
   }
 
   if (subPhase === "set-result" || subPhase === "unit-finished") {
-    const setCorrect = setReview.filter((item) => item.isCorrect).length;
-    const setTotal = setReview.length;
-    const isPerfect = setCorrect === setTotal;
-    const hasWrong = setCorrect < setTotal;
-    const hasMoreSets = displayedIndex < questions.length;
-
     return (
-      <div className="flex flex-col gap-4 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
-        <div className="flex flex-col items-center gap-1 text-center">
-          <p className="font-display text-2xl font-semibold motion-safe:animate-[pulse_0.6s_ease-in-out_1]">
-            {setTotal}問中 {setCorrect}問 正解！
-          </p>
-          <p className="text-xs opacity-80">
-            {subPhase === "unit-finished"
-              ? `お疲れさまでした。全体: ${overallCount.correct} / ${overallCount.total}問正解`
-              : isPerfect
-                ? "たいへんよくできました！"
-                : "どんまい！次がんばろう"}
-          </p>
-        </div>
-
-        <SetReviewList items={setReview} />
-
-        <div className="flex flex-col gap-2">
-          {subPhase === "set-result" && hasMoreSets && (
-            <button
-              type="button"
-              onClick={() => {
-                setSetReview([]);
-                setSubPhase("question");
-              }}
-              className="rounded-md bg-house-primary px-3 py-2 text-sm font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-            >
-              次の5問に進む
-            </button>
-          )}
-          {hasWrong && (
-            <button
-              type="button"
-              onClick={() =>
-                startBonusRound(
-                  setReview.filter((item) => !item.isCorrect).map((item) => item.question),
-                  subPhase,
-                )
-              }
-              className="rounded-md border border-house-primary/60 px-3 py-2 text-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-            >
-              間違えた問題だけをやり直す
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => startBonusRound(setReview.map((item) => item.question), subPhase)}
-            className="rounded-md border border-house-primary/60 px-3 py-2 text-sm hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-          >
-            もう一度この5問を解く
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-          >
-            テスト選択へ戻る
-          </button>
-        </div>
-      </div>
+      <SetResultScreen
+        subPhase={subPhase}
+        setReview={quiz.setReview}
+        overallCount={quiz.overallCount}
+        hasMoreSets={displayedIndex < questions.length}
+        onNext={() => {
+          quiz.setSetReview([]);
+          quiz.setSubPhase("question");
+        }}
+        onRetryWrong={() =>
+          quiz.startBonusRound(
+            quiz.setReview.filter((item) => !item.isCorrect).map((item) => item.question),
+            subPhase,
+          )
+        }
+        onRetrySet={() => quiz.startBonusRound(quiz.setReview.map((item) => item.question), subPhase)}
+        onClose={onClose}
+      />
     );
   }
 
   const question = questions[displayedIndex];
-  const { setStart, setEnd } = setBoundsFor(displayedIndex);
+  const { setStart, setEnd } = quiz.setBoundsFor(displayedIndex);
   const setSize = setEnd - setStart;
   const positionInSet = displayedIndex - setStart + 1;
   const progressPercent = Math.round(((positionInSet - 1) / setSize) * 100);
@@ -746,8 +812,8 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
-          onClick={() => void handleCloseDuringSet()}
-          disabled={isSyncing}
+          onClick={() => void quiz.handleCloseDuringSet(onClose)}
+          disabled={quiz.isSyncing}
           aria-label="テストを閉じる"
           className="text-xs opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
         >
@@ -780,11 +846,227 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
         question={question}
         revealed={revealed}
         onReveal={() => setRevealed(true)}
-        onGrade={(isCorrect) => void grade(isCorrect)}
-        disabled={isSyncing}
+        onGrade={(isCorrect) => void quiz.grade(isCorrect)}
+        disabled={quiz.isSyncing}
       />
 
-      {isSyncing && <p className="text-xs opacity-70">保存中…</p>}
+      {quiz.isSyncing && <p className="text-xs opacity-70">保存中…</p>}
+    </div>
+  );
+}
+
+// 単語マスター（VocabularyTest）は訳語の表現ブレが大きく自由記述の自動採点に
+// 向かないため、4択（他の単語の訳を誤答選択肢として流用）で即時に自動採点する。
+function buildChoices(allQuestions: QuestionView[], correct: QuestionView, count = 4): string[] {
+  const distractorPool = allQuestions
+    .filter((q) => q.id !== correct.id && q.answer !== correct.answer)
+    .map((q) => q.answer);
+  const shuffledPool = [...distractorPool].sort(() => Math.random() - 0.5);
+  const distractors = shuffledPool.slice(0, count - 1);
+  return [...distractors, correct.answer].sort(() => Math.random() - 0.5);
+}
+
+function VocabularyChoiceStep({
+  question,
+  choices,
+  selected,
+  onSelect,
+  disabled = false,
+}: {
+  question: QuestionView;
+  choices: string[];
+  selected: string | null;
+  onSelect: (choice: string) => void;
+  disabled?: boolean;
+}) {
+  const preset = QUIZ_CARD_PRESET_BY_QUESTION_TYPE.VocabularyTest;
+  return (
+    <>
+      <p className="text-xs opacity-85">{preset.instruction}</p>
+      <p className="font-display text-2xl font-semibold" lang={preset.promptLang}>
+        {question.prompt}
+      </p>
+      <div className="flex flex-col gap-2">
+        {choices.map((choice) => {
+          const isSelected = selected === choice;
+          const isCorrectChoice = choice === question.answer;
+          const showResult = selected !== null;
+          const style = !showResult
+            ? "border-house-primary/60 hover:opacity-80"
+            : isCorrectChoice
+              ? "border-house-accent bg-house-accent/10 font-semibold"
+              : isSelected
+                ? "border-house-primary/60 opacity-60"
+                : "border-house-primary/30 opacity-50";
+          return (
+            <button
+              key={choice}
+              type="button"
+              onClick={() => onSelect(choice)}
+              disabled={disabled || showResult}
+              lang={preset.answerLang}
+              className={`rounded-md border px-3 py-2 text-left text-sm transition-opacity disabled:cursor-default ${style} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus`}
+            >
+              {choice}
+            </button>
+          );
+        })}
+      </div>
+      {selected !== null && (
+        <p className={selected === question.answer ? "font-semibold text-house-accent" : "font-semibold opacity-85"}>
+          {selected === question.answer ? "○ 正解！" : `✕ 不正解（正解: ${question.answer}）`}
+        </p>
+      )}
+    </>
+  );
+}
+
+function MultipleChoiceQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClose: () => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [bonusSelected, setBonusSelected] = useState<string | null>(null);
+  const quiz = useSetBasedQuiz(unit, {
+    onQuestionChange: () => {
+      setSelected(null);
+      setBonusSelected(null);
+    },
+  });
+  const { boot, questions, session, displayedIndex, subPhase } = quiz;
+
+  const question = questions[displayedIndex];
+  const choices = useMemo(
+    () => (question ? buildChoices(questions, question) : []),
+    [questions, question],
+  );
+  const bonusQuestion = quiz.bonusQueue[quiz.bonusIndex];
+  const bonusChoices = useMemo(
+    () => (bonusQuestion ? buildChoices(questions, bonusQuestion) : []),
+    [questions, bonusQuestion],
+  );
+
+  if (boot.phase === "loading" || !session) {
+    return <p className="text-xs opacity-70">読込中…</p>;
+  }
+
+  if (boot.phase === "resume-dialog") {
+    return (
+      <QuizResumeDialog
+        currentIndex={session.currentIndex}
+        onResume={() => {
+          quiz.resetForNewAttempt();
+          boot.setPhase("ready");
+        }}
+        onRestart={() => void quiz.restartFromBeginning()}
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (subPhase === "bonus-round") {
+    return (
+      <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+        <span className="tabular-nums text-xs text-house-primary">
+          やり直し {quiz.bonusIndex + 1} / {quiz.bonusQueue.length}問
+        </span>
+        <VocabularyChoiceStep
+          question={bonusQuestion}
+          choices={bonusChoices}
+          selected={bonusSelected}
+          onSelect={setBonusSelected}
+        />
+        {bonusSelected !== null && (
+          <button
+            type="button"
+            onClick={() => void quiz.gradeBonus(bonusSelected === bonusQuestion.answer)}
+            className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            次へ
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (subPhase === "set-result" || subPhase === "unit-finished") {
+    return (
+      <SetResultScreen
+        subPhase={subPhase}
+        setReview={quiz.setReview}
+        overallCount={quiz.overallCount}
+        hasMoreSets={displayedIndex < questions.length}
+        onNext={() => {
+          quiz.setSetReview([]);
+          quiz.setSubPhase("question");
+        }}
+        onRetryWrong={() =>
+          quiz.startBonusRound(
+            quiz.setReview.filter((item) => !item.isCorrect).map((item) => item.question),
+            subPhase,
+          )
+        }
+        onRetrySet={() => quiz.startBonusRound(quiz.setReview.map((item) => item.question), subPhase)}
+        onClose={onClose}
+      />
+    );
+  }
+
+  const { setStart, setEnd } = quiz.setBoundsFor(displayedIndex);
+  const setSize = setEnd - setStart;
+  const positionInSet = displayedIndex - setStart + 1;
+  const progressPercent = Math.round(((positionInSet - 1) / setSize) * 100);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => void quiz.handleCloseDuringSet(onClose)}
+          disabled={quiz.isSyncing}
+          aria-label="テストを閉じる"
+          className="text-xs opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+        >
+          ◀ 戻る
+        </button>
+        <div className="text-right">
+          <span className="tabular-nums text-xs text-house-primary">
+            {positionInSet} / {setSize}問
+          </span>
+          <p className="text-[10px] opacity-60">
+            全{questions.length}問中{displayedIndex + 1}問目
+          </p>
+        </div>
+      </div>
+
+      <div
+        role="progressbar"
+        aria-valuenow={progressPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-2 w-full overflow-hidden rounded-full bg-house-primary/20"
+      >
+        <div
+          className="h-full rounded-full bg-house-accent transition-[width] motion-reduce:transition-none"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      <VocabularyChoiceStep
+        question={question}
+        choices={choices}
+        selected={selected}
+        onSelect={setSelected}
+        disabled={quiz.isSyncing}
+      />
+
+      {selected !== null && (
+        <button
+          type="button"
+          onClick={() => void quiz.grade(selected === question.answer)}
+          disabled={quiz.isSyncing}
+          className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+        >
+          {quiz.isSyncing ? "保存中…" : "次へ"}
+        </button>
+      )}
     </div>
   );
 }
@@ -865,6 +1147,8 @@ function LearningUnitRow({
         <div className="border-t border-house-primary/20 pt-3">
           {unit.questionType === "KanjiWriting" ? (
             <SelfGradedQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
+          ) : unit.questionType === "VocabularyTest" ? (
+            <MultipleChoiceQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
           ) : (
             <QuizTakingPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
           )}

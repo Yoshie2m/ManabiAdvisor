@@ -305,3 +305,16 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `usecase/CompleteLearningUnit/`（usecase本体＋テスト）を削除（呼び出し元が無くなったため）
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`を更新
 - [x] `npx tsc --noEmit` / `npm test`（29ファイル・126テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 22. 魔力修練コンテキスト（英語「単語マスター」モードの追加）✅実装済み
+
+ユーザーから英語学習の5モード案（単語マスター／シャドーイング／文法・Speakチェック／本文・翻訳トレーニング／ニガテ復習）のペーストを受け、まず「単語マスター」から着手することでヒアリング済み。`specs/mana-cultivation.md` の「意思決定の経緯（第13回ヒアリング）」節を参照。残り4モードは後日改めてヒアリング予定（スコープ外15番）。
+
+- [x] 既存の`VocabularyTest`QuestionType（第4回ヒアリングで定義済みだが未使用だった）をそのまま流用。ドメイン層の変更は無し
+- [x] `infrastructure/memory/seedData.ts` に英語の学習ユニットを1件追加（`unit-english-vocab-1`、「単語マスターI（Lesson 1-2 新出語彙）」）、ユーザー提供の単語リスト5件から`Question`を生成して追加
+- [x] `src/app/academy/page.tsx`: 漢字「書き」（`SelfGradedQuizPanel`）と共通する5問セットの進行・`SyncQuizProgress`同期・ボーナス周回・結果画面のロジックを`useSetBasedQuiz`フックと`SetResultScreen`コンポーネントに抽出・共通化
+- [x] `buildChoices`（同一ユニット内の他の単語の訳を誤答選択肢として流用する純粋関数）・`VocabularyChoiceStep`・`MultipleChoiceQuizPanel`を新規作成。選択→フィードバック表示→「次へ」で確定という2段階にし、判定と前進を同時に行わないようにする（即座に前進すると同一レンダーサイクルでフィードバックが一瞬で消える不具合を回避）
+- [x] `LearningUnitRow` に `unit.questionType === "VocabularyTest"` の分岐を追加し `MultipleChoiceQuizPanel` を表示
+- [x] `npm run seed` でFirestoreに再投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）し、Firestoreへの直接クエリで5件の投入データを確認
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第13回ヒアリング節）を更新
+- [x] `npx tsc --noEmit` / `npm test`（29ファイル・126テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

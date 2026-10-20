@@ -94,6 +94,17 @@ export const learningUnits: LearningUnit[] = [
     { id: "unit-english-l5-s2", curriculumId: "curriculum-english", title: "Lesson 5 Scene 2: 付帯状況の基礎", difficulty: 4 },
     "English",
   ),
+  // 単語マスターI（Lesson 1-2 新出語彙）。4択クイズ形式。
+  LearningUnit.create(
+    {
+      id: "unit-english-vocab-1",
+      curriculumId: "curriculum-english",
+      title: "単語マスターI（Lesson 1-2 新出語彙）",
+      difficulty: 2,
+      questionType: "VocabularyTest",
+    },
+    "English",
+  ),
   // 体系数学2 代数編。各節を1ユニットとする。
   LearningUnit.create(
     { id: "unit-math-c1-s1", curriculumId: "curriculum-math", title: "第1章 式の計算 1: 多項式の計算", difficulty: 2 },
@@ -520,6 +531,25 @@ const kanjiTest2ReadQuestions: Question[] = KANJI_TEST_2_ITEMS.map((item, index)
   }),
 );
 
+// 単語マスターI（Lesson 1-2 新出語彙）。4択クイズの誤答選択肢は、同じ単元内の
+// 他の単語の訳をUI側で流用して自動生成する（専用のデータは持たない）。
+const ENGLISH_VOCAB_1_ITEMS: { word: string; meaning: string }[] = [
+  { word: "hold（動）", meaning: "手に持つ、抱く" },
+  { word: "Happy birthday!", meaning: "誕生日おめでとう！" },
+  { word: "hand + O + O", meaning: "(人)に(物)を手渡す" },
+  { word: "What (a/an) + 形容詞 + 名", meaning: "なんて〜な...なのだろう！" },
+  { word: "so (= very) much", meaning: "とても" },
+];
+
+const englishVocab1Questions: Question[] = ENGLISH_VOCAB_1_ITEMS.map((item, index) =>
+  Question.create({
+    id: `q-english-vocab1-${String(index + 1).padStart(2, "0")}`,
+    learningUnitId: "unit-english-vocab-1",
+    prompt: item.word,
+    answer: item.meaning,
+  }),
+);
+
 // 数学の出題形式別ユニット（unit-math-calc-1 / unit-math-word-1）向けの実際の問題例。
 export const questions: Question[] = [
   Question.create({
@@ -556,4 +586,5 @@ export const questions: Question[] = [
   ...kanjiTest1ReadQuestions,
   ...kanjiTest2WriteQuestions,
   ...kanjiTest2ReadQuestions,
+  ...englishVocab1Questions,
 ];
