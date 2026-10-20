@@ -11,7 +11,6 @@ import { FirebaseLearningUnitRepository } from "@/contexts/mana-cultivation/infr
 import { FirebaseQuestionRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseQuestionRepository";
 import { FirebaseQuizSessionRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseQuizSessionRepository";
 import { FirebaseUpcomingExamRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseUpcomingExamRepository";
-import { CompleteLearningUnit } from "@/contexts/mana-cultivation/usecase/CompleteLearningUnit/CompleteLearningUnit";
 import { FindQuizSession } from "@/contexts/mana-cultivation/usecase/FindQuizSession/FindQuizSession";
 import { GenerateDailyMission } from "@/contexts/mana-cultivation/usecase/GenerateDailyMission/GenerateDailyMission";
 import type { CultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
@@ -42,11 +41,6 @@ const quizSessionRepository = new FirebaseQuizSessionRepository();
 
 const enrollStudent = new EnrollStudent(studentRepository);
 const startCultivation = new StartCultivation(cultivationProgressRepository);
-const completeLearningUnit = new CompleteLearningUnit(
-  cultivationProgressRepository,
-  curriculumRepository,
-  learningUnitRepository,
-);
 const recordAttempt = new RecordAttempt(cultivationProgressRepository);
 const generateDailyMission = new GenerateDailyMission(cultivationProgressRepository, upcomingExamRepository);
 const offerMockExamMission = new OfferMockExamMission(cultivationProgressRepository, upcomingExamRepository);
@@ -115,7 +109,6 @@ type AcademyState = {
   signOutUser: () => Promise<void>;
   enroll: (house: House, grade: Grade) => Promise<void>;
   refreshOverview: () => Promise<void>;
-  completeUnit: (learningUnitId: string) => Promise<void>;
   recordAttemptFor: (learningUnitId: string, isCorrect: boolean) => Promise<void>;
   assignDailyMission: () => Promise<void>;
   offerMockExam: () => Promise<void>;
@@ -212,16 +205,6 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
       const studentId = currentStudentId(get().authUid);
       const overview = await getCultivationOverview.execute(studentId);
       set({ overview, error: null });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : String(error) });
-    }
-  },
-
-  completeUnit: async (learningUnitId) => {
-    try {
-      const studentId = currentStudentId(get().authUid);
-      await completeLearningUnit.execute(studentId, learningUnitId);
-      await get().refreshOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
     }

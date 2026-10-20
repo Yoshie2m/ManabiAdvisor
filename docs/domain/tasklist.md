@@ -294,3 +294,14 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] リファクタに伴うESLintエラー（エフェクト内での同期的setState）を修正し、二重タップ・同期失敗時のガード（`finally`でのref解除、送信中のボタン無効化）を追加
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第12回ヒアリング節）を更新
 - [x] `npx tsc --noEmit` / `npm test`（30ファイル・129テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 21. 学園案内コンテキスト（手動の正解・不正解・単元完了ボタンの廃止）✅実装済み
+
+実際のテスト受験フロー（「テストを受ける」）が整ったため、問題を解かずに自己申告だけで理解度・能力値を操作できてしまう手動ボタンは不要とユーザーから指示。`specs/mana-cultivation.md` の「スコープ外」14番を参照。
+
+- [x] `src/app/academy/page.tsx` の `LearningUnitRow` から「正解」「不正解」「単元完了 (+5)」ボタンを削除。`questionType` を持たない（実データが無い）ユニットには「準備中」バッジを表示するのみに変更
+- [x] `LibraryTab`/`TowerTab`/`AcademyPage` から不要になった `onComplete` の受け渡しを削除（`onRecordAttempt` は「問題を見る」内のQuizCardの自己採点から引き続き使うため維持）
+- [x] `src/stores/useAcademyStore.ts` から `completeUnit` アクションと `CompleteLearningUnit` の呼び出しを削除
+- [x] `usecase/CompleteLearningUnit/`（usecase本体＋テスト）を削除（呼び出し元が無くなったため）
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`を更新
+- [x] `npx tsc --noEmit` / `npm test`（29ファイル・126テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

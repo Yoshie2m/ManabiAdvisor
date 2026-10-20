@@ -792,12 +792,10 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
 function LearningUnitRow({
   unit,
   onRecordAttempt,
-  onComplete,
   onFetchQuestions,
 }: {
   unit: LearningUnitView;
   onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
-  onComplete: (learningUnitId: string) => void;
   onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
 }) {
   const [questions, setQuestions] = useState<QuestionView[] | null>(null);
@@ -857,27 +855,9 @@ function LearningUnitRow({
               {isLoadingQuestions ? "読込中…" : questions ? "問題を閉じる" : "問題を見る"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => onRecordAttempt(unit.id, true)}
-            className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-          >
-            正解
-          </button>
-          <button
-            type="button"
-            onClick={() => onRecordAttempt(unit.id, false)}
-            className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-          >
-            不正解
-          </button>
-          <button
-            type="button"
-            onClick={() => onComplete(unit.id)}
-            className="rounded-md bg-house-primary px-2 py-1 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-          >
-            単元完了 (+5)
-          </button>
+          {!unit.questionType && (
+            <span className="rounded-full bg-house-primary/10 px-2 py-0.5 text-xs opacity-60">準備中</span>
+          )}
         </div>
       </div>
 
@@ -1037,14 +1017,12 @@ function LibraryTab({
   selectedSubject,
   onSelectSubject,
   onRecordAttempt,
-  onComplete,
   onFetchQuestions,
 }: {
   overview: CultivationOverview;
   selectedSubject: Subject | null;
   onSelectSubject: (subject: Subject | null) => void;
   onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
-  onComplete: (learningUnitId: string) => void;
   onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
 }) {
   if (!selectedSubject) {
@@ -1110,7 +1088,6 @@ function LibraryTab({
                 key={unit.id}
                 unit={unit}
                 onRecordAttempt={onRecordAttempt}
-                onComplete={onComplete}
                 onFetchQuestions={onFetchQuestions}
               />
             ))
@@ -1126,14 +1103,12 @@ function TowerTab({
   filter,
   onFilterChange,
   onRecordAttempt,
-  onComplete,
   onFetchQuestions,
 }: {
   units: LearningUnitView[];
   filter: Subject | "all";
   onFilterChange: (filter: Subject | "all") => void;
   onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
-  onComplete: (learningUnitId: string) => void;
   onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
 }) {
   const filtered = filter === "all" ? units : units.filter((unit) => unit.subject === filter);
@@ -1197,7 +1172,6 @@ function TowerTab({
               key={unit.id}
               unit={unit}
               onRecordAttempt={onRecordAttempt}
-              onComplete={onComplete}
               onFetchQuestions={onFetchQuestions}
             />
           ))}
@@ -1213,7 +1187,6 @@ export default function AcademyPage() {
     isEnrolled,
     overview,
     refreshOverview,
-    completeUnit,
     recordAttemptFor,
     assignDailyMission,
     offerMockExam,
@@ -1248,7 +1221,6 @@ export default function AcademyPage() {
 
   const unitById = new Map(overview.units.map((unit) => [unit.id, unit]));
   const onRecordAttempt = (id: string, isCorrect: boolean) => void recordAttemptFor(id, isCorrect);
-  const onComplete = (id: string) => void completeUnit(id);
   const phantomCount = overview.units.filter(
     (unit) => unit.attemptCount > 0 && unit.understandingRate < WEAK_UNDERSTANDING_THRESHOLD,
   ).length;
@@ -1291,7 +1263,6 @@ export default function AcademyPage() {
             selectedSubject={selectedSubject}
             onSelectSubject={setSelectedSubject}
             onRecordAttempt={onRecordAttempt}
-            onComplete={onComplete}
             onFetchQuestions={fetchQuestions}
           />
         )}
@@ -1302,7 +1273,6 @@ export default function AcademyPage() {
             filter={towerFilter}
             onFilterChange={setTowerFilter}
             onRecordAttempt={onRecordAttempt}
-            onComplete={onComplete}
             onFetchQuestions={fetchQuestions}
           />
         )}

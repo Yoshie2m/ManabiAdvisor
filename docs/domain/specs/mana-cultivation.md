@@ -666,7 +666,7 @@ interface CurriculumRepository {
 ## スコープ外（残課題。本追記には含まない）
 
 1. **`CultivationProgressRepository`（永続化）**: ドメイン層設計時点では未設計だったが、動作確認用システム構築時にインメモリ実装込みで用意した（`tasklist.md` 参照）。具象実装 `FirebaseCultivationProgressRepository` を実装済み。Firestoreの `cultivationProgress/{studentId}` コレクションに `{ grade, abilities, understandingLevels, currentDailyMission, currentMockExamMission }` の形で永続化する。復元時は `CultivationProgress.reconstruct` を使う（詳細は `tasklist.md` 7番参照）。
-2. **ユースケース層（例: `CompleteLearningUnit` / `RecordAttempt` / `GenerateDailyMission`）**: 同上、動作確認用システム構築時に実装済み（`tasklist.md` 参照）。
+2. **ユースケース層（例: `CompleteLearningUnit` / `RecordAttempt` / `GenerateDailyMission`）**: 同上、動作確認用システム構築時に実装済み（`tasklist.md` 参照）。→ `CompleteLearningUnit`（単元完了ボタン用）は、実際のテスト受験フロー（`SyncQuizProgress`）が能力成長を担うようになったため、手動での自己申告的な完了操作が不要と判断し削除した（下記14番参照）。
 3. **difficulty（難易度）の意味**: 現状 `number` 型のみで制約なし。値域や上昇量との連動（難易度が高いほど上昇量が大きい等）は今回採用しなかった（上昇量は固定）。将来変更する場合は改めて仕様化する。
 4. **Missionの完了状態管理**: 生徒がMissionを「実施した／していない」をトラッキングする仕組み。ヒアリングの結果、今回は不要と判断し見送った（第5回ヒアリング、`tasklist.md` 参照）。既存の `recordAttempt`/`completeLearningUnit` による学習状況の追跡で十分とする。
 5. **デイリーミッション・モック模試ミッションの一意性制御**: 同じ日・同じ試験に対する重複生成を防ぐ仕組み。ヒアリングの結果、今回は不要と判断し見送った（第5回ヒアリング、`tasklist.md` 参照）。何度生成しても上書きされる現在の挙動を維持する。
@@ -678,5 +678,6 @@ interface CurriculumRepository {
 11. **テスト受験フローの対象範囲**: `QuizSession` によるテスト受験フローは `questionType` を持つユニット全般に汎用的に動作するため、第10回ヒアリングで追加した漢字小テストIIにもコード変更無しでそのまま適用された。数学の計算問題・文章題への展開も同じ仕組みを流用できるが今回は未着手。
 12. **学習ユニット一覧の「進行中」バッジ表示**: 中断中のテストに「進行中40%」のようなバッジを表示するアイデアは、第9回ヒアリングの結果、今回は不要と判断し見送った（任意の改善として後回し）。
 13. **残りの小テスト**: 小テストIII以降は、ユーザーからデータが提供された時点で同じ手順（`KANJI_TEST_n_ITEMS`の追加）で追加する。
+14. **学習ユニット一覧の手動「正解」「不正解」「単元完了」ボタンの廃止**: 実際のテスト受験フロー（「テストを受ける」＝`SyncQuizProgress`/`SelfGradedQuizPanel`）が整ったことで、生徒が問題を解かずに自己申告だけで理解度・能力値を操作できてしまう手動ボタンは不要と判断しユーザー指示により削除した。`questionType` を持つユニットは「テストを受ける」（＋「問題を見る」）のみを表示し、`questionType` を持たない（実データが無い）ユニットは「準備中」と表示するのみで、どの操作も提供しない。これに伴い `CompleteLearningUnit` ユースケース（＋テスト）を削除した。`recordAttempt`（理解度記録）は「問題を見る」内のQuizCardの自己採点（覚えた／もう一度）からは引き続き呼ばれる。
 
 これらは `tasklist.md` に別タスクとして追加する。
