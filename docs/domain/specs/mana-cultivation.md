@@ -12,8 +12,9 @@
 5. 「英語に単語テスト・本文の和訳・英訳問題、数学に計算問題・文章題、国語に漢字の書き・読みという出題形式を追加する」という**出題形式モデル**（ユーザーヒアリング済み、下記「意思決定の経緯（第4回・第6回・第8回・第10回）」参照）。
 6. 「漢字小テスト（I・II）・英単語を1問ずつ解答・採点し、中断しても続きから再開できる」という**テスト受験フロー**（ユーザーヒアリング済み、下記「意思決定の経緯（第9回・第13回）」参照）。
 7. 「学習ユニットに、採点対象ではない読み物・解説（本文・文法ポイント）を持たせられる」という**参照用テキストモデル**（`LearningUnit.referenceText`。ユーザーヒアリング済み、下記「意思決定の経緯（第14回）」参照）。
+8. 「学習ユニットの参照用テキストに、聞き取り用の読み上げ音声を持たせられる」という**参照用音声モデル**（`LearningUnit.referenceAudioUrl`。ユーザーヒアリング済み、下記「意思決定の経緯（第15回）」参照）。
 
-項目1〜4はドメイン層に加え、動作確認用のユースケース層・インメモリインフラ層・UIまで実装済み（`tasklist.md` 参照）。項目5〜7もドメイン層・Firebaseインフラ層・UIまで実装済み。
+項目1〜4はドメイン層に加え、動作確認用のユースケース層・インメモリインフラ層・UIまで実装済み（`tasklist.md` 参照）。項目5〜8もドメイン層・Firebaseインフラ層・UIまで実装済み。
 
 ## 意思決定の経緯（第1回ヒアリング: 能力成長ルール）
 
@@ -319,6 +320,26 @@ class RecordQuizAttempts {
 - `LearningUnit.create`/`reconstruct`は`referenceText`を省略した場合`null`になる（既存の挙動を壊さない）。
 - `LearningUnit.create`は`referenceText`があっても`questionType`が無い組み合わせを許容する（例外を投げない）。
 
+## 意思決定の経緯（第15回ヒアリング: 本文の聞き取り音声の追加）
+
+ユーザーから「英語の本文をリスニングしたいので、gTTS（Google Text-to-Speech）を使って本文を読み上げるようにしてほしい」という依頼を受け、実装前にユーザーへ2点を確認し、以下の方針で合意済み:
+
+1. **音声の保存方法**: このプロジェクトはFirebase Cloud Storageを一度も使っておらず（`firebase.json`にstorageターゲットが無い）、CLIからの有効化（`firebase deploy --only storage`）を試みたところ「Firebase Storageが未セットアップ」エラーとなり、Firebaseコンソールでの手動セットアップ（Blazeプランへのアップグレードを求められる可能性あり）が必要だった。ユーザーに確認したところ、コンソール操作は行わず、代わりに生成した音声ファイルをNext.jsの`public/audio/`配下に静的アセットとして同梱する方式を選んだ。これは`CLAUDE.md`の「音声/画像はFirestore/Cloud Storageに格納する」という本来方針から一時的に外れる運用判断であり、将来Cloud Storageを有効化した際に移行する想定として明記しておく。
+2. **読み上げの対象テキスト**: `referenceText`には文法ポイントの説明や日本語訳の注釈（全角括弧）・ト書き（半角括弧）も含まれているため、そのまま音声化すると不自然になる。ユーザーの指示により、会話文のうち**英語のセリフ部分のみ**（ト書き・日本語訳を除く）を読み上げ対象とする。
+
+### 実装
+
+**ドメイン層の変更**: `LearningUnit`に`referenceAudioUrl: string | null`を追加（`referenceText`と同じパターン。`LearningUnitProps.referenceAudioUrl?: string`、`create`/`reconstruct`両方で受け取る）。`referenceText`とは独立した任意項目で、組み合わせの制約は無い。`GetCultivationOverview`の`LearningUnitView`・`FirebaseLearningUnitRepository`・`scripts/seedFirestore.ts`に読み書きを追加した。
+
+**コンテンツ生成（一度だけ実行する一時的な作業、リポジトリにスクリプトは残さない）**: ローカルに`pip3 install gTTS`でPythonパッケージを導入し、会話文の英語セリフ6行（ト書き・日本語訳を除いたもの）を1つのmp3（`public/audio/lesson2-scene1.mp3`）として生成した。`unit-english-l2-s1`の`referenceAudioUrl`にこの静的パスを設定した。
+
+**UI層の変更**: `LearningUnitRow`の「本文・文法を見る」トグル内（`referenceText`表示ブロック）に、`referenceAudioUrl`がある場合のみ`<audio controls>`プレイヤーを追加した。
+
+### テストで守る不変条件
+
+- `LearningUnit.create`/`reconstruct`は`referenceAudioUrl`を省略した場合`null`になる。
+- `LearningUnit.create`は`referenceAudioUrl`と`referenceText`を同時に持つ組み合わせを許容する（例外を投げない）。
+
 ## 値オブジェクト
 
 ### ExamType
@@ -439,6 +460,7 @@ class LearningUnit {
       difficulty: number;
       questionType?: QuestionType; // 省略可。指定する場合は SubjectQuestionTypePolicy を満たす必要がある
       referenceText?: string; // 省略可。採点対象外の読み物・解説（第14回ヒアリングで追加）
+      referenceAudioUrl?: string; // 省略可。referenceTextの聞き取り用音声URL（第15回ヒアリングで追加）
     },
     subject: Subject,
   ): LearningUnit;
@@ -448,6 +470,7 @@ class LearningUnit {
   readonly difficulty: number;
   readonly questionType: QuestionType | null; // 追加フィールド
   readonly referenceText: string | null; // 追加フィールド（第14回ヒアリング）
+  readonly referenceAudioUrl: string | null; // 追加フィールド（第15回ヒアリング）
 }
 ```
 
@@ -732,5 +755,7 @@ interface CurriculumRepository {
 14. **学習ユニット一覧の手動「正解」「不正解」「単元完了」ボタンの廃止**: 実際のテスト受験フロー（「テストを受ける」＝`SyncQuizProgress`/`SelfGradedQuizPanel`）が整ったことで、生徒が問題を解かずに自己申告だけで理解度・能力値を操作できてしまう手動ボタンは不要と判断しユーザー指示により削除した。`questionType` を持つユニットは「テストを受ける」（＋「問題を見る」）のみを表示し、`questionType` を持たない（実データが無い）ユニットは「準備中」と表示するのみで、どの操作も提供しない。これに伴い `CompleteLearningUnit` ユースケース（＋テスト）を削除した。`recordAttempt`（理解度記録）は「問題を見る」内のQuizCardの自己採点（覚えた／もう一度）からは引き続き呼ばれる。
 15. **英語の残り3モード（シャドーイング／文法・Speakチェック／ニガテ復習）**: 第13回ヒアリングで「単語マスター」のみ先行実装し、残りは後日改めてヒアリングのうえ着手する方針。シャドーイングは教科書音声素材の準備とブラウザの音声認識対応状況（iOS Safariの制約）、ニガテ復習は問題単位の履歴記録という新しいドメイン概念が必要になるなど、モードごとに前提条件が異なる。→ 第14回ヒアリングで「本文・翻訳トレーニング」はLesson 2 Scene 1に限り先行実装した（`referenceText`による本文・文法解説の表示＋`WordOrderQuizPanel`による例文練習）が、他のLesson・Sceneへの展開は未着手（データが提供された時点で同じ手順で追加する）。
 16. **`LearningUnit.referenceText`のバリデーション**: 第14回ヒアリングで追加した任意フィールドだが、`Question.prompt`/`answer`のような「空文字なら例外」という不変条件は設けていない（採点に関わらない表示用データのため）。将来、空文字のreferenceTextを意図せず登録してしまう運用上の問題が出た場合は改めて検討する。
+17. **音声コンテンツのFirebase Cloud Storage移行**: 第15回ヒアリングで追加した`referenceAudioUrl`は、本来の`CLAUDE.md`方針（音声/画像はCloud Storageに格納）ではなくNext.jsの`public/audio/`静的配信を暫定的に採用した（このプロジェクトでFirebase Storageが未セットアップだったため）。Storageを有効化した場合、既存の静的ファイルをアップロードし`referenceAudioUrl`をCloud StorageのダウンロードURLに差し替えるだけで移行できる（`LearningUnit`側のモデル・UIの実装は変更不要）。
+18. **他Lesson・Sceneへの音声展開**: Lesson 2 Scene 1のみ先行実装。他のLesson・Sceneの会話文に音声を追加する場合、同じ手順（gTTSで英語セリフ部分のみを生成→`public/audio/`に配置→`referenceAudioUrl`を設定）を繰り返す。生成に使ったPythonスクリプトは一時ファイルのためリポジトリには残していない。
 
 これらは `tasklist.md` に別タスクとして追加する。

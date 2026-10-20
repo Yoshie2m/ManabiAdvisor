@@ -1434,8 +1434,14 @@ function LearningUnitRow({
       </div>
 
       {isShowingReference && unit.referenceText && (
-        <div className="whitespace-pre-wrap rounded-md border border-house-primary/20 bg-house-bg/40 p-3 text-xs leading-relaxed">
-          {unit.referenceText}
+        <div className="flex flex-col gap-2 rounded-md border border-house-primary/20 bg-house-bg/40 p-3 text-xs leading-relaxed">
+          {unit.referenceAudioUrl && (
+            <div className="flex flex-col gap-1">
+              <span className="opacity-70">🔊 会話文を聞く</span>
+              <audio controls src={unit.referenceAudioUrl} className="w-full" />
+            </div>
+          )}
+          <p className="whitespace-pre-wrap">{unit.referenceText}</p>
         </div>
       )}
 

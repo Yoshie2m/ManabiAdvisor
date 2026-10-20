@@ -10,6 +10,7 @@ export type LearningUnitProps = {
   difficulty: Difficulty;
   questionType?: QuestionType;
   referenceText?: string;
+  referenceAudioUrl?: string;
 };
 
 export class LearningUnit {
@@ -22,10 +23,13 @@ export class LearningUnit {
     // 採点対象の問題ではない読み物・解説（本文・文法ポイント等）。単元に0〜1件、
     // Question件数とは独立に持てる（第14回ヒアリング参照）。
     readonly referenceText: string | null,
+    // referenceTextの聞き取り用音声（会話文の英語セリフのみを読み上げたもの）のURL。
+    // referenceTextと同様、0〜1件・Question件数とは独立（第15回ヒアリング参照）。
+    readonly referenceAudioUrl: string | null,
   ) {}
 
   static create(
-    { id, curriculumId, title, difficulty, questionType, referenceText }: LearningUnitProps,
+    { id, curriculumId, title, difficulty, questionType, referenceText, referenceAudioUrl }: LearningUnitProps,
     subject: Subject,
   ): LearningUnit {
     if (!isDifficulty(difficulty)) {
@@ -34,7 +38,15 @@ export class LearningUnit {
     if (questionType && !subjectQuestionTypePolicy.isSatisfiedBy(subject, questionType)) {
       throw new Error(`Subject "${subject}" does not support questionType "${questionType}"`);
     }
-    return new LearningUnit(id, curriculumId, title, difficulty, questionType ?? null, referenceText ?? null);
+    return new LearningUnit(
+      id,
+      curriculumId,
+      title,
+      difficulty,
+      questionType ?? null,
+      referenceText ?? null,
+      referenceAudioUrl ?? null,
+    );
   }
 
   // Trusts persisted invariants instead of re-checking SubjectQuestionTypePolicy against a subject.
@@ -45,7 +57,16 @@ export class LearningUnit {
     difficulty,
     questionType,
     referenceText,
+    referenceAudioUrl,
   }: LearningUnitProps): LearningUnit {
-    return new LearningUnit(id, curriculumId, title, difficulty, questionType ?? null, referenceText ?? null);
+    return new LearningUnit(
+      id,
+      curriculumId,
+      title,
+      difficulty,
+      questionType ?? null,
+      referenceText ?? null,
+      referenceAudioUrl ?? null,
+    );
   }
 }

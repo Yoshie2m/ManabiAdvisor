@@ -15,6 +15,7 @@ type LearningUnitDocument = {
   difficulty: Difficulty;
   questionType: QuestionType | null;
   referenceText?: string | null;
+  referenceAudioUrl?: string | null;
 };
 
 function toLearningUnit(id: string, data: DocumentData): LearningUnit {
@@ -26,6 +27,7 @@ function toLearningUnit(id: string, data: DocumentData): LearningUnit {
     difficulty: document.difficulty,
     questionType: document.questionType ?? undefined,
     referenceText: document.referenceText ?? undefined,
+    referenceAudioUrl: document.referenceAudioUrl ?? undefined,
   });
 }
 

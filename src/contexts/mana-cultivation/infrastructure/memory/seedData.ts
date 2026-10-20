@@ -44,7 +44,10 @@ export const curricula: Curriculum[] = [
 
 // Lesson 2 Scene 1（感嘆文）の本文・文法ポイント。採点対象の問題ではなく、
 // クイズ開始前に読み物として表示する参照用テキスト（ユーザー提供の
-// L2-S1.txtに基づく）。
+// L2-S1.txtに基づく）。referenceAudioUrl（下記）は、この会話文のうち
+// 英語セリフ部分のみ（ト書き・日本語訳を除く）をgTTSで読み上げた音声
+// （public/audio/lesson2-scene1.mp3、生成に使ったスクリプトは一時ファイルで
+// リポジトリには残していない）。第15回ヒアリング参照。
 const LESSON2_SCENE1_REFERENCE_TEXT = `【文法】感嘆文：驚き・喜び・悲しみなどの感情を表す文
 ・なんて～なのだろう。 → [ How + 形容詞/副詞 ! ]
 ・なんて～な……なのだろう。 → [ What (a/an) + 形容詞 + 名詞 [ + S V ] ! ]
@@ -82,6 +85,7 @@ export const learningUnits: LearningUnit[] = [
       title: "Lesson 2 Scene 1: 感嘆文 (What / How)",
       difficulty: 2,
       referenceText: LESSON2_SCENE1_REFERENCE_TEXT,
+      referenceAudioUrl: "/audio/lesson2-scene1.mp3",
     },
     "English",
   ),

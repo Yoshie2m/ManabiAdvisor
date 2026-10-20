@@ -343,3 +343,17 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `npm run seed` でFirestoreに再投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第14回ヒアリング節）を更新
 - [x] `npx tsc --noEmit` / `npm test`（29ファイル・128テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 25. 魔力修練コンテキスト（Lesson 2 Scene 1の本文リスニング音声の追加）✅実装済み
+
+ユーザーから「英語の本文をリスニングしたいので、gTTSを使って本文を読み上げるようにしてほしい」と依頼を受け、音声の保存方法と読み上げ対象テキストの2点をヒアリング。`specs/mana-cultivation.md`「意思決定の経緯（第15回ヒアリング）」節を参照。Firebase Storageがこのプロジェクトで未セットアップだったため、CLIでの有効化を試みたが失敗し、ユーザー確認のうえ`public/audio/`への静的配信に切り替えた。
+
+- [x] `domain/models/LearningUnit.ts`: `referenceAudioUrl?: string`を`LearningUnitProps`・`create`・`reconstruct`に追加（`referenceText`と同じ独立パターン）＋テスト2件追加
+- [x] `usecase/GetCultivationOverview/GetCultivationOverview.ts`・`infrastructure/firebase/FirebaseLearningUnitRepository.ts`・`scripts/seedFirestore.ts`: `referenceAudioUrl`の読み書きを追加
+- [x] ローカルに`pip3 install gTTS`を実行し、会話文の英語セリフ6行（ト書き・日本語訳の注釈を除く）から`public/audio/lesson2-scene1.mp3`を生成
+- [x] `infrastructure/memory/seedData.ts`: `unit-english-l2-s1`に`referenceAudioUrl: "/audio/lesson2-scene1.mp3"`を追加
+- [x] `src/app/academy/page.tsx`の`LearningUnitRow`: 「本文・文法を見る」トグル内に`referenceAudioUrl`がある場合のみ`<audio controls>`プレイヤーを追加
+- [x] `npm run seed` でFirestoreに再投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）し、Firestoreへの直接クエリで`referenceAudioUrl`を確認
+- [x] ローカルサーバーで `/academy` と `/audio/lesson2-scene1.mp3` の配信を確認（両方200応答）
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第15回ヒアリング節）を更新
+- [x] `npx tsc --noEmit` / `npm test`（29ファイル・130テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

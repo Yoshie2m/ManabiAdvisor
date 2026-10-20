@@ -24,6 +24,7 @@ export type LearningUnitView = {
   difficulty: Difficulty;
   questionType: QuestionType | null;
   referenceText: string | null;
+  referenceAudioUrl: string | null;
   understandingRate: number;
   attemptCount: number;
 };
@@ -99,6 +100,7 @@ export class GetCultivationOverview {
         difficulty: unit.difficulty,
         questionType: unit.questionType,
         referenceText: unit.referenceText,
+        referenceAudioUrl: unit.referenceAudioUrl,
         understandingRate: progress.getUnderstanding(unit.id).rate,
         attemptCount: progress.getUnderstanding(unit.id).totalCount,
       })),

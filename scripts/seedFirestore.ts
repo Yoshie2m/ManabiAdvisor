@@ -44,6 +44,7 @@ async function main() {
       difficulty: unit.difficulty,
       questionType: unit.questionType,
       referenceText: unit.referenceText,
+      referenceAudioUrl: unit.referenceAudioUrl,
     });
   }
 

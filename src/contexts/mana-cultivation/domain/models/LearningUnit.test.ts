@@ -12,6 +12,7 @@ describe("LearningUnit", () => {
 
     expect(unit.questionType).toBeNull();
     expect(unit.referenceText).toBeNull();
+    expect(unit.referenceAudioUrl).toBeNull();
   });
 
   it("creates successfully with a referenceText and no questionType", () => {
@@ -28,6 +29,22 @@ describe("LearningUnit", () => {
 
     expect(unit.referenceText).toBe("【会話文】Tom: Happy birthday, Grandma!");
     expect(unit.questionType).toBeNull();
+  });
+
+  it("creates successfully with a referenceAudioUrl alongside referenceText", () => {
+    const unit = LearningUnit.create(
+      {
+        id: "unit-reference-audio",
+        curriculumId: "curriculum-english",
+        title: "Lesson 2 Scene 1: 感嘆文",
+        difficulty: 2,
+        referenceText: "【会話文】Tom: Happy birthday, Grandma!",
+        referenceAudioUrl: "/audio/lesson2-scene1.mp3",
+      },
+      "English",
+    );
+
+    expect(unit.referenceAudioUrl).toBe("/audio/lesson2-scene1.mp3");
   });
 
   it.each([1, 5] as const)("creates successfully at the difficulty boundary %i", (difficulty) => {
@@ -112,6 +129,17 @@ describe("LearningUnit", () => {
       });
 
       expect(unit.referenceText).toBeNull();
+    });
+
+    it("restores a null referenceAudioUrl when omitted", () => {
+      const unit = LearningUnit.reconstruct({
+        id: "unit-7",
+        curriculumId: "curriculum-english",
+        title: "Lesson 2 Scene 1",
+        difficulty: 2,
+      });
+
+      expect(unit.referenceAudioUrl).toBeNull();
     });
   });
 });
