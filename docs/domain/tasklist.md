@@ -270,3 +270,13 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] 既存の「テストを受ける」機能（17番）は `questionType` ベースの汎用実装のため、コード変更無しで小テストIIにもそのまま適用されることを確認
 - [x] `docs/domain/specs/mana-cultivation.md`に第10回ヒアリング節を追記
 - [x] `npx tsc --noEmit` / `npm test`（29ファイル・128テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 19. 魔力修練コンテキスト（テスト受験フローのバッチ化）✅実装済み
+
+漢字小テストのように問題数が多い（56〜77問）場合、1問ごとにサーバーへ送信する従来方式（17番で実装した`SubmitQuizAnswer`）は通信待ちが積み重なりユーザビリティが低いとユーザーから指摘。`specs/mana-cultivation.md` の「意思決定の経緯（第11回ヒアリング）」節でヒアリング済み。全問のデータは元々テスト開始時に一括ダウンロード済みだったため、正誤判定をクライアント側に移し、サーバー同期を「完了時」「中断して閉じる時」のみに限定する方針で合意（予期せぬ終了時の未同期分の消失は許容）。
+
+- [x] `usecase/SubmitQuizAnswer/`（1問ごとの判定・同期）を削除し、`usecase/SyncQuizProgress/SyncQuizProgress.ts` を新規作成（複数問分の結果をまとめて`recordAttempt`→既存`QuizSession`から継続して`advance()`を結果件数分呼ぶ→完了時は`completeLearningUnit`＋セッション削除、未完了ならセッション保存）＋テスト（フェイクリポジトリ、既存セッションからの継続ケースを含む）
+- [x] `src/stores/useAcademyStore.ts` の `submitQuizAnswerFor` を `syncQuizProgressFor` に置き換え
+- [x] `src/app/academy/page.tsx` の `QuizTakingPanel` を全面改修: 正誤判定を`answerCorrectnessPolicy`でクライアント側即時実行（通信待ちゼロ）、結果は`useRef`で端末内に蓄積、最終問題到達時または「◀ 戻る」クリック時にのみ`syncQuizProgressFor`でまとめて同期。二重タップガードもネットワーク非依存の同期的な`ref`ガードに変更
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第11回ヒアリング節、`SubmitQuizAnswer`→`SyncQuizProgress`への置き換えとして型定義を更新）を更新
+- [x] `npx tsc --noEmit` / `npm test`（29ファイル・127テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

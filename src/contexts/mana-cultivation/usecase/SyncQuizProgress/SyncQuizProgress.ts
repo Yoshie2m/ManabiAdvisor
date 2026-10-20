@@ -3,19 +3,18 @@ import { QuizSession } from "../../domain/models/QuizSession";
 import type { CultivationProgressRepository } from "../../domain/repositories/CultivationProgressRepository";
 import type { CurriculumRepository } from "../../domain/repositories/CurriculumRepository";
 import type { LearningUnitRepository } from "../../domain/repositories/LearningUnitRepository";
-import type { QuestionRepository } from "../../domain/repositories/QuestionRepository";
 import type { QuizSessionRepository } from "../../domain/repositories/QuizSessionRepository";
-import { answerCorrectnessPolicy } from "../../domain/specs/AnswerCorrectnessPolicy";
 
-export type SubmitQuizAnswerResult = {
-  isCorrect: boolean;
-  session: QuizSession;
-};
+export type QuizAnswerResult = { isCorrect: boolean };
 
-export class SubmitQuizAnswer {
+export type SyncQuizProgressResult = { session: QuizSession | null };
+
+// クライアント側でまとめて解答した結果（複数問分）を1回のサーバー往復で反映する。
+// 1問ごとの往復（旧SubmitQuizAnswer）を避け、通信はテスト完了時・中断時のみに限定する
+// （ブラウザが予期せず閉じられた場合、未同期分の進捗は失われる設計で合意済み）。
+export class SyncQuizProgress {
   constructor(
     private readonly quizSessionRepository: QuizSessionRepository,
-    private readonly questionRepository: QuestionRepository,
     private readonly cultivationProgressRepository: CultivationProgressRepository,
     private readonly curriculumRepository: CurriculumRepository,
     private readonly learningUnitRepository: LearningUnitRepository,
@@ -24,29 +23,24 @@ export class SubmitQuizAnswer {
   async execute(
     studentId: StudentId,
     learningUnitId: string,
-    questionId: string,
-    submittedAnswer: string,
-  ): Promise<SubmitQuizAnswerResult> {
-    const questions = await this.questionRepository.findByLearningUnitId(learningUnitId);
-    const question = questions.find((candidate) => candidate.id === questionId);
-    if (!question) {
-      throw new Error(`Question not found: ${questionId}`);
-    }
-
-    const session = await this.quizSessionRepository.find(studentId, learningUnitId);
-    if (!session) {
-      throw new Error(`QuizSession not found for learningUnit: ${learningUnitId}`);
-    }
-
-    const isCorrect = answerCorrectnessPolicy.isSatisfiedBy(submittedAnswer, question.answer);
-
+    results: QuizAnswerResult[],
+    totalQuestions: number,
+  ): Promise<SyncQuizProgressResult> {
     const progress = await this.cultivationProgressRepository.findByStudentId(studentId);
     if (!progress) {
       throw new Error(`CultivationProgress not found for student: ${studentId.toString()}`);
     }
-    progress.recordAttempt(learningUnitId, isCorrect);
+    for (const result of results) {
+      progress.recordAttempt(learningUnitId, result.isCorrect);
+    }
 
-    session.advance();
+    let session = await this.quizSessionRepository.find(studentId, learningUnitId);
+    if (!session) {
+      session = QuizSession.start(studentId, learningUnitId, totalQuestions);
+    }
+    for (let i = 0; i < results.length; i++) {
+      session.advance();
+    }
 
     if (session.isComplete) {
       const learningUnit = await this.learningUnitRepository.findById(learningUnitId);
@@ -60,11 +54,11 @@ export class SubmitQuizAnswer {
       progress.completeLearningUnit(curriculum, learningUnit);
       await this.cultivationProgressRepository.save(progress);
       await this.quizSessionRepository.delete(studentId, learningUnitId);
-    } else {
-      await this.cultivationProgressRepository.save(progress);
-      await this.quizSessionRepository.save(session);
+      return { session: null };
     }
 
-    return { isCorrect, session };
+    await this.cultivationProgressRepository.save(progress);
+    await this.quizSessionRepository.save(session);
+    return { session };
   }
 }

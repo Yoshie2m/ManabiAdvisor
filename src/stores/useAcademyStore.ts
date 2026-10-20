@@ -21,7 +21,8 @@ import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferM
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
 import { StartCultivation } from "@/contexts/mana-cultivation/usecase/StartCultivation/StartCultivation";
 import { StartQuiz } from "@/contexts/mana-cultivation/usecase/StartQuiz/StartQuiz";
-import { SubmitQuizAnswer } from "@/contexts/mana-cultivation/usecase/SubmitQuizAnswer/SubmitQuizAnswer";
+import type { QuizAnswerResult } from "@/contexts/mana-cultivation/usecase/SyncQuizProgress/SyncQuizProgress";
+import { SyncQuizProgress } from "@/contexts/mana-cultivation/usecase/SyncQuizProgress/SyncQuizProgress";
 import {
   signIn as firebaseSignIn,
   signOutUser as firebaseSignOut,
@@ -57,9 +58,8 @@ const getCultivationOverview = new GetCultivationOverview(
 const getQuestionsForLearningUnit = new GetQuestionsForLearningUnit(questionRepository);
 const findQuizSession = new FindQuizSession(quizSessionRepository);
 const startQuiz = new StartQuiz(quizSessionRepository);
-const submitQuizAnswer = new SubmitQuizAnswer(
+const syncQuizProgress = new SyncQuizProgress(
   quizSessionRepository,
-  questionRepository,
   cultivationProgressRepository,
   curriculumRepository,
   learningUnitRepository,
@@ -120,11 +120,11 @@ type AcademyState = {
   fetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
   checkQuizSession: (learningUnitId: string) => Promise<QuizSessionView | null>;
   startQuizSession: (learningUnitId: string, totalQuestions: number) => Promise<QuizSessionView>;
-  submitQuizAnswerFor: (
+  syncQuizProgressFor: (
     learningUnitId: string,
-    questionId: string,
-    submittedAnswer: string,
-  ) => Promise<{ isCorrect: boolean; session: QuizSessionView }>;
+    results: QuizAnswerResult[],
+    totalQuestions: number,
+  ) => Promise<QuizSessionView | null>;
 };
 
 export const useAcademyStore = create<AcademyState>((set, get) => ({
@@ -277,10 +277,10 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
     return toQuizSessionView(session);
   },
 
-  submitQuizAnswerFor: async (learningUnitId, questionId, submittedAnswer) => {
+  syncQuizProgressFor: async (learningUnitId, results, totalQuestions) => {
     const studentId = currentStudentId(get().authUid);
-    const result = await submitQuizAnswer.execute(studentId, learningUnitId, questionId, submittedAnswer);
+    const result = await syncQuizProgress.execute(studentId, learningUnitId, results, totalQuestions);
     await get().refreshOverview();
-    return { isCorrect: result.isCorrect, session: toQuizSessionView(result.session) };
+    return result.session ? toQuizSessionView(result.session) : null;
   },
 }));

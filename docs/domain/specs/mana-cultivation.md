@@ -200,28 +200,29 @@ class StartQuiz {
   execute(studentId: StudentId, learningUnitId: string, totalQuestions: number): Promise<QuizSession>;
 }
 
-class SubmitQuizAnswer {
+class SyncQuizProgress {
   constructor(
     quizSessionRepository: QuizSessionRepository,
-    questionRepository: QuestionRepository,
     cultivationProgressRepository: CultivationProgressRepository,
     curriculumRepository: CurriculumRepository,
     learningUnitRepository: LearningUnitRepository,
   );
-  // 1. questionRepositoryからQuestionを取得しanswerCorrectnessPolicyで正誤判定
-  // 2. CultivationProgress.recordAttempt(learningUnitId, isCorrect)を呼ぶ
-  // 3. session.advance()。完了していなければセッションを保存（オートセーブ）
+  // 1. results（複数問分の正誤）をCultivationProgress.recordAttempt(learningUnitId, isCorrect)でまとめて記録
+  // 2. 既存QuizSessionがあれば取得（無ければstart）、results件数分advance()
+  // 3. 完了していなければセッションを保存
   // 4. 完了していれば CultivationProgress.completeLearningUnit(curriculum, learningUnit) を呼び、セッションを削除（リセット）
   execute(
     studentId: StudentId,
     learningUnitId: string,
-    questionId: string,
-    submittedAnswer: string,
-  ): Promise<{ isCorrect: boolean; session: QuizSession }>;
+    results: { isCorrect: boolean }[],
+    totalQuestions: number,
+  ): Promise<{ session: QuizSession | null }>;
 }
 ```
 
-`src/app/academy/page.tsx` に「テストを受ける」ボタンを新設（既存の読み取り専用の「問題を見る」とは別UI）。クリック時に `FindQuizSession` で中断データの有無を確認し、中断中であれば「続きから／最初からやり直す」ダイアログを表示する。無ければ `StartQuiz` で新規開始する。1問ごとに `SubmitQuizAnswer` を呼び、進捗バー・正誤フィードバック・完了時の結果画面を表示する。
+> 初版（第9回ヒアリング時点）では1問ごとにサーバーへ送信する `SubmitQuizAnswer` だったが、第11回ヒアリングで `SyncQuizProgress`（複数問まとめて送信）に置き換えた。詳細は下記「意思決定の経緯（第11回ヒアリング）」を参照。
+
+`src/app/academy/page.tsx` に「テストを受ける」ボタンを新設（既存の読み取り専用の「問題を見る」とは別UI）。クリック時に `FindQuizSession` で中断データの有無を確認し、中断中であれば「続きから／最初からやり直す」ダイアログを表示する。無ければ `StartQuiz` で新規開始する。正誤判定はクライアント側で `answerCorrectnessPolicy` を直接呼んで行い（全問のQuestionデータは`fetchQuestions`でテスト開始時に端末へダウンロード済み）、結果は端末内に蓄積。完了時または「◀ 戻る」での中断時に `SyncQuizProgress` でまとめてサーバーへ同期する。進捗バー・正誤フィードバック・完了時の結果画面を表示する。
 
 ## 意思決定の経緯（第10回ヒアリング: 漢字小テストIIの追加）
 
@@ -231,6 +232,20 @@ class SubmitQuizAnswer {
 2. **対応方針（ユーザー確認済み）**: 「読み」テストの正解には、ソースのカタカナをそのまま変換した文字列ではなく、熟語の標準的な正しい読みを採用する。「書き」テストの問題文（カタカナを含む文）はユーザー提供のソースのまま変更しない。該当7問の詳細は `infrastructure/memory/seedData.ts` の `KANJI_TEST_2_ITEMS` 直前のコメントを参照。
 3. **実データ**: 77問分の `Question`（書き77件・読み77件、計154件）を新設した `unit-japanese-kanji-test2-write` / `unit-japanese-kanji-test2-read` にそれぞれ投入した。
 4. **テスト受験フロー（QuizSession）との関係**: 「テストを受ける」機能（第9回ヒアリング）は特定の学習ユニットIDに依存せず、`questionType` を持つユニット全般に汎用的に動作する設計のため、コード変更無しで小テストIIにもそのまま適用される。
+
+## 意思決定の経緯（第11回ヒアリング: テスト受験フローのバッチ化）
+
+第9回ヒアリングで実装した「テスト受験フロー」は、1問答えるたびに `SubmitQuizAnswer` でサーバー（Firestore）へ同期していた。漢字小テストのように問題数が多い（56〜77問）場合、1問ごとの通信待ちでユーザビリティが低下するとユーザーから指摘を受け、実装前にユーザーへ確認し、以下の方針で合意済み:
+
+1. **ダウンロードのタイミング**: テスト開始時に全問題（`prompt`/`answer`含む）を一括取得する。これは `fetchQuestions`（`GetQuestionsForLearningUnit`）が既に行っていたため、変更不要だった。
+2. **正誤判定**: サーバー側（旧`SubmitQuizAnswer`内）ではなく、クライアント側で `answerCorrectnessPolicy`（ドメイン仕様オブジェクトをUI層から直接呼び出す。ロジック自体はドメイン層のまま）を使って行う。全問の正解データは手順1で既に端末にダウンロード済みのため、新たな情報漏洩は生じない。
+3. **サーバーへの同期タイミング**: 1問ごとではなく、「テスト完了時」または「◀ 戻る（中断して閉じる）」時のみ、まとめて1回のリクエストで同期する。テスト中の各問の正誤はクライアント側の変数（メモリ上）に蓄積するのみで、通信は発生させない。
+4. **予期せぬ終了時のデータ損失**: ブラウザタブが突然閉じられる・アプリがクラッシュするなど、上記2つの同期タイミングを経由せずに終了した場合、その回でまだ同期していない分の進捗は失われてよい（`beforeunload`等でのベストエフォート同期は行わない。シンプルな実装を優先する方針で合意）。
+5. **ユースケースの置き換え**: 1問ごとの `SubmitQuizAnswer` は廃止し、複数問の結果をまとめて受け取る `SyncQuizProgress` に置き換える。`QuizSession`（エンティティ）自体に変更は無い（`advance()` を結果件数分ループ呼び出しするだけで、既存の不変条件をそのまま利用できる）。`QuestionRepository` への依存は無くなる（正誤判定をサーバー側で再検証しないため）。
+
+### SyncQuizProgress（ユースケース、`SubmitQuizAnswer`を置き換え）
+
+実際の型定義は上記「ユースケース」節の `SyncQuizProgress` を参照。
 
 ## 値オブジェクト
 
@@ -609,10 +624,14 @@ interface CurriculumRepository {
 - [x] `QuizSession.advance()` は `isComplete` が `true` になった時点で以後の呼び出しに例外を投げる
 - [x] `QuizSession.reconstruct` は永続化された `currentIndex` を再検証せずそのまま信頼する
 - [x] `answerCorrectnessPolicy`: 前後の空白以外が完全一致する場合のみtrue
-- [x] `SubmitQuizAnswer`: 正誤判定の結果に関わらず `recordAttempt` を呼び、該当単元の `UnderstandingLevel` を更新する
-- [x] `SubmitQuizAnswer`: セッションが完了していなければ `QuizSession` を保存（オートセーブ）し、`CultivationProgress` は削除しない
-- [x] `SubmitQuizAnswer`: 最終問題を解き終えると `completeLearningUnit`（能力成長）を呼び、`QuizSession` を削除（リセット）する
-- [x] `SubmitQuizAnswer`: 存在しない `questionId` や、アクティブな `QuizSession` が無い場合は例外を投げる
+
+### テスト受験フローのバッチ化（第11回ヒアリング分）のテスト不変条件 — 実装・テスト済み
+
+- [x] `SyncQuizProgress`: 複数件の `results` それぞれについて `recordAttempt` を呼び、該当単元の `UnderstandingLevel` をまとめて更新する
+- [x] `SyncQuizProgress`: 既存の `QuizSession` があればそこから継続して `results.length` 回 `advance()` する（`0` からやり直さない）
+- [x] `SyncQuizProgress`: 完了していなければ `QuizSession` を保存し、`CultivationProgress` は削除しない
+- [x] `SyncQuizProgress`: 全問完了すると `completeLearningUnit`（能力成長）を呼び、`QuizSession` を削除（リセット）する
+- [x] `SyncQuizProgress`: 生徒の `CultivationProgress` が存在しない場合は例外を投げる
 
 ## スコープ外（残課題。本追記には含まない）
 

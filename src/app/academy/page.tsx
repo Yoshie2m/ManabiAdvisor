@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
@@ -11,10 +11,12 @@ import { TabIcon, type TabIconName } from "@/components/ui/TabIcon";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import type { QuestionType } from "@/contexts/mana-cultivation/domain/models/QuestionType";
 import { SUBJECTS, type Subject } from "@/contexts/mana-cultivation/domain/models/Subject";
+import { answerCorrectnessPolicy } from "@/contexts/mana-cultivation/domain/specs/AnswerCorrectnessPolicy";
 import type {
   CultivationOverview,
   LearningUnitView,
 } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
+import type { QuizAnswerResult } from "@/contexts/mana-cultivation/usecase/SyncQuizProgress/SyncQuizProgress";
 import { useAcademyStore, type QuestionView, type QuizSessionView } from "@/stores/useAcademyStore";
 
 const SUBJECT_LABEL: Record<Subject, string> = {
@@ -140,7 +142,7 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
   const fetchQuestions = useAcademyStore((state) => state.fetchQuestions);
   const checkQuizSession = useAcademyStore((state) => state.checkQuizSession);
   const startQuizSession = useAcademyStore((state) => state.startQuizSession);
-  const submitQuizAnswerFor = useAcademyStore((state) => state.submitQuizAnswerFor);
+  const syncQuizProgressFor = useAcademyStore((state) => state.syncQuizProgressFor);
 
   const [phase, setPhase] = useState<QuizPhase>("loading");
   const [questions, setQuestions] = useState<QuestionView[]>([]);
@@ -149,7 +151,14 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
   const [inputValue, setInputValue] = useState("");
   const [feedback, setFeedback] = useState<{ isCorrect: boolean; correctAnswer: string } | null>(null);
   const [resultCount, setResultCount] = useState({ correct: 0, total: 0 });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // 採点・進捗の更新は毎問サーバーに送らず、端末側に溜めてから「完了時」か
+  // 「中断して閉じる」時にまとめて1回だけ同期する（通信待ちゼロでサクサク
+  // 進められるようにするため。ユーザーヒアリング済み）。ブラウザが予期せず
+  // 閉じられた場合、未同期分の進捗は失われる想定で合意済み。
+  const pendingResultsRef = useRef<QuizAnswerResult[]>([]);
+  const hasAnsweredCurrentRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,37 +188,61 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
   }, [unit.id]);
 
   async function restartFromBeginning() {
+    pendingResultsRef.current = [];
     const started = await startQuizSession(unit.id, questions.length);
     setSession(started);
     setDisplayedIndex(0);
     setPhase("in-progress");
   }
 
-  async function submitAnswer() {
-    // 送信中に二重送信されると、古いレスポンスが次の問題の表示に紛れ込む
-    // （セッションも二重に進んでしまう）ため、送信中は再入をブロックする。
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const question = questions[displayedIndex];
-      const { isCorrect, session: nextSession } = await submitQuizAnswerFor(unit.id, question.id, inputValue);
-      setFeedback({ isCorrect, correctAnswer: question.answer });
-      setResultCount((prev) => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
-      setSession(nextSession);
-    } finally {
-      setIsSubmitting(false);
+  // 端末内に溜まった採点結果をまとめて1回だけサーバーに送る。
+  async function syncPending(): Promise<void> {
+    if (pendingResultsRef.current.length === 0) return;
+    const results = pendingResultsRef.current;
+    pendingResultsRef.current = [];
+    const nextSession = await syncQuizProgressFor(unit.id, results, questions.length);
+    setSession(nextSession);
+  }
+
+  function submitAnswer() {
+    // 二重タップでも同じ問題の採点が2回記録されないようにする。
+    if (hasAnsweredCurrentRef.current) return;
+    hasAnsweredCurrentRef.current = true;
+
+    const question = questions[displayedIndex];
+    const isCorrect = answerCorrectnessPolicy.isSatisfiedBy(inputValue, question.answer);
+    pendingResultsRef.current.push({ isCorrect });
+    setFeedback({ isCorrect, correctAnswer: question.answer });
+    setResultCount((prev) => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
+  }
+
+  async function goToNext() {
+    setFeedback(null);
+    setInputValue("");
+    hasAnsweredCurrentRef.current = false;
+
+    const nextIndex = displayedIndex + 1;
+    if (nextIndex >= questions.length) {
+      setIsSyncing(true);
+      try {
+        await syncPending();
+      } finally {
+        setIsSyncing(false);
+      }
+      setPhase("finished");
+    } else {
+      setDisplayedIndex(nextIndex);
     }
   }
 
-  function goToNext() {
-    if (!session) return;
-    setFeedback(null);
-    setInputValue("");
-    if (session.isComplete) {
-      setPhase("finished");
-    } else {
-      setDisplayedIndex(session.currentIndex);
+  async function handleClose() {
+    setIsSyncing(true);
+    try {
+      await syncPending();
+    } finally {
+      setIsSyncing(false);
     }
+    onClose();
   }
 
   if (phase === "loading" || !session) {
@@ -269,9 +302,10 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => void handleClose()}
+          disabled={isSyncing}
           aria-label="テストを閉じる"
-          className="text-xs opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          className="text-xs opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
         >
           ◀ 戻る
         </button>
@@ -304,7 +338,7 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void submitAnswer();
+            submitAnswer();
           }}
           className="flex flex-col gap-2"
         >
@@ -319,10 +353,10 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
           />
           <button
             type="submit"
-            disabled={inputValue.trim().length === 0 || isSubmitting}
+            disabled={inputValue.trim().length === 0}
             className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
           >
-            {isSubmitting ? "送信中…" : "答える"}
+            答える
           </button>
         </form>
       ) : (
@@ -332,10 +366,11 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
           </p>
           <button
             type="button"
-            onClick={goToNext}
-            className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+            onClick={() => void goToNext()}
+            disabled={isSyncing}
+            className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
           >
-            次へ
+            {isSyncing ? "保存中…" : "次へ"}
           </button>
         </div>
       )}

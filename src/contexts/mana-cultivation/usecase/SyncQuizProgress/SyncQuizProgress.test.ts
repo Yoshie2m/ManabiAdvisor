@@ -4,14 +4,12 @@ import { StudentId } from "../../../house-assignment/domain/models/StudentId";
 import { Curriculum } from "../../domain/models/Curriculum";
 import { CultivationProgress } from "../../domain/models/CultivationProgress";
 import { LearningUnit } from "../../domain/models/LearningUnit";
-import { Question } from "../../domain/models/Question";
 import { QuizSession } from "../../domain/models/QuizSession";
 import type { CultivationProgressRepository } from "../../domain/repositories/CultivationProgressRepository";
 import type { CurriculumRepository } from "../../domain/repositories/CurriculumRepository";
 import type { LearningUnitRepository } from "../../domain/repositories/LearningUnitRepository";
-import type { QuestionRepository } from "../../domain/repositories/QuestionRepository";
 import type { QuizSessionRepository } from "../../domain/repositories/QuizSessionRepository";
-import { SubmitQuizAnswer } from "./SubmitQuizAnswer";
+import { SyncQuizProgress } from "./SyncQuizProgress";
 
 const curriculum = Curriculum.create({
   id: "curriculum-japanese",
@@ -29,10 +27,6 @@ const unit = LearningUnit.create(
   },
   "Japanese",
 );
-const questions = [
-  Question.create({ id: "q-1", learningUnitId: unit.id, prompt: "人生のヒアイを見る。", answer: "悲哀" }),
-  Question.create({ id: "q-2", learningUnitId: unit.id, prompt: "問題2", answer: "答え2" }),
-];
 
 function fakeRepositories() {
   const progresses = new Map<string, CultivationProgress>();
@@ -62,11 +56,6 @@ function fakeRepositories() {
       return [unit];
     },
   };
-  const questionRepository: QuestionRepository = {
-    async findByLearningUnitId() {
-      return questions;
-    },
-  };
   const quizSessionRepository: QuizSessionRepository = {
     async find(studentId, learningUnitId) {
       return sessions.get(`${studentId.toString()}:${learningUnitId}`) ?? null;
@@ -79,113 +68,91 @@ function fakeRepositories() {
     },
   };
 
-  return {
-    progresses,
-    sessions,
-    cultivationProgressRepository,
-    curriculumRepository,
-    learningUnitRepository,
-    questionRepository,
-    quizSessionRepository,
-  };
+  return { progresses, sessions, cultivationProgressRepository, curriculumRepository, learningUnitRepository, quizSessionRepository };
 }
 
-describe("SubmitQuizAnswer", () => {
-  it("records the attempt, advances the session, and autosaves when not yet complete", async () => {
+describe("SyncQuizProgress", () => {
+  it("records every result and saves a new session when not yet complete", async () => {
     const repositories = fakeRepositories();
     const studentId = StudentId.fromString("student-1");
     repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
-    repositories.sessions.set(`${studentId.toString()}:${unit.id}`, QuizSession.start(studentId, unit.id, 2));
-    const usecase = new SubmitQuizAnswer(
+    const usecase = new SyncQuizProgress(
       repositories.quizSessionRepository,
-      repositories.questionRepository,
       repositories.cultivationProgressRepository,
       repositories.curriculumRepository,
       repositories.learningUnitRepository,
     );
 
-    const result = await usecase.execute(studentId, unit.id, "q-1", "悲哀");
-
-    expect(result.isCorrect).toBe(true);
-    expect(result.session.currentIndex).toBe(1);
-    expect(result.session.isComplete).toBe(false);
-    expect(repositories.progresses.get("student-1")?.getUnderstanding(unit.id).correctCount).toBe(1);
-    expect(repositories.sessions.get(`student-1:${unit.id}`)?.currentIndex).toBe(1);
-  });
-
-  it("reports an incorrect answer without throwing", async () => {
-    const repositories = fakeRepositories();
-    const studentId = StudentId.fromString("student-1");
-    repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
-    repositories.sessions.set(`${studentId.toString()}:${unit.id}`, QuizSession.start(studentId, unit.id, 2));
-    const usecase = new SubmitQuizAnswer(
-      repositories.quizSessionRepository,
-      repositories.questionRepository,
-      repositories.cultivationProgressRepository,
-      repositories.curriculumRepository,
-      repositories.learningUnitRepository,
-    );
-
-    const result = await usecase.execute(studentId, unit.id, "q-1", "悲愛");
-
-    expect(result.isCorrect).toBe(false);
-    expect(repositories.progresses.get("student-1")?.getUnderstanding(unit.id).totalCount).toBe(1);
-    expect(repositories.progresses.get("student-1")?.getUnderstanding(unit.id).correctCount).toBe(0);
-  });
-
-  it("grows the subject ability and resets (deletes) the session once the last question is answered", async () => {
-    const repositories = fakeRepositories();
-    const studentId = StudentId.fromString("student-1");
-    repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
-    repositories.sessions.set(`${studentId.toString()}:${unit.id}`, QuizSession.reconstruct({
+    const result = await usecase.execute(
       studentId,
-      learningUnitId: unit.id,
-      totalQuestions: 2,
-      currentIndex: 1,
-    }));
-    const usecase = new SubmitQuizAnswer(
+      unit.id,
+      [{ isCorrect: true }, { isCorrect: false }, { isCorrect: true }],
+      5,
+    );
+
+    expect(result.session?.currentIndex).toBe(3);
+    expect(result.session?.isComplete).toBe(false);
+    const understanding = repositories.progresses.get("student-1")?.getUnderstanding(unit.id);
+    expect(understanding?.totalCount).toBe(3);
+    expect(understanding?.correctCount).toBe(2);
+    expect(repositories.sessions.get(`student-1:${unit.id}`)?.currentIndex).toBe(3);
+  });
+
+  it("continues from an existing session instead of restarting at 0", async () => {
+    const repositories = fakeRepositories();
+    const studentId = StudentId.fromString("student-1");
+    repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
+    repositories.sessions.set(
+      `${studentId.toString()}:${unit.id}`,
+      QuizSession.reconstruct({ studentId, learningUnitId: unit.id, totalQuestions: 5, currentIndex: 2 }),
+    );
+    const usecase = new SyncQuizProgress(
       repositories.quizSessionRepository,
-      repositories.questionRepository,
       repositories.cultivationProgressRepository,
       repositories.curriculumRepository,
       repositories.learningUnitRepository,
     );
 
-    const result = await usecase.execute(studentId, unit.id, "q-2", "答え2");
+    const result = await usecase.execute(studentId, unit.id, [{ isCorrect: true }], 5);
 
-    expect(result.session.isComplete).toBe(true);
+    expect(result.session?.currentIndex).toBe(3);
+  });
+
+  it("completes the unit and deletes the session once all questions are synced", async () => {
+    const repositories = fakeRepositories();
+    const studentId = StudentId.fromString("student-1");
+    repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
+
+    const usecase = new SyncQuizProgress(
+      repositories.quizSessionRepository,
+      repositories.cultivationProgressRepository,
+      repositories.curriculumRepository,
+      repositories.learningUnitRepository,
+    );
+
+    const result = await usecase.execute(
+      studentId,
+      unit.id,
+      [{ isCorrect: true }, { isCorrect: true }],
+      2,
+    );
+
+    expect(result.session).toBeNull();
     expect(repositories.progresses.get("student-1")?.getAbility("Japanese").level).toBe(5);
     expect(repositories.sessions.get(`student-1:${unit.id}`)).toBeUndefined();
   });
 
-  it("throws when the question does not belong to the given learning unit", async () => {
+  it("throws when the student has not started cultivation yet", async () => {
     const repositories = fakeRepositories();
-    const studentId = StudentId.fromString("student-1");
-    repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
-    repositories.sessions.set(`${studentId.toString()}:${unit.id}`, QuizSession.start(studentId, unit.id, 2));
-    const usecase = new SubmitQuizAnswer(
+    const usecase = new SyncQuizProgress(
       repositories.quizSessionRepository,
-      repositories.questionRepository,
       repositories.cultivationProgressRepository,
       repositories.curriculumRepository,
       repositories.learningUnitRepository,
     );
 
-    await expect(usecase.execute(studentId, unit.id, "missing-question", "悲哀")).rejects.toThrow();
-  });
-
-  it("throws when there is no active session (StartQuiz must be called first)", async () => {
-    const repositories = fakeRepositories();
-    const studentId = StudentId.fromString("student-1");
-    repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
-    const usecase = new SubmitQuizAnswer(
-      repositories.quizSessionRepository,
-      repositories.questionRepository,
-      repositories.cultivationProgressRepository,
-      repositories.curriculumRepository,
-      repositories.learningUnitRepository,
-    );
-
-    await expect(usecase.execute(studentId, unit.id, "q-1", "悲哀")).rejects.toThrow();
+    await expect(
+      usecase.execute(StudentId.fromString("student-1"), unit.id, [{ isCorrect: true }], 5),
+    ).rejects.toThrow();
   });
 });
