@@ -149,6 +149,7 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
   const [inputValue, setInputValue] = useState("");
   const [feedback, setFeedback] = useState<{ isCorrect: boolean; correctAnswer: string } | null>(null);
   const [resultCount, setResultCount] = useState({ correct: 0, total: 0 });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,11 +186,19 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
   }
 
   async function submitAnswer() {
-    const question = questions[displayedIndex];
-    const { isCorrect, session: nextSession } = await submitQuizAnswerFor(unit.id, question.id, inputValue);
-    setFeedback({ isCorrect, correctAnswer: question.answer });
-    setResultCount((prev) => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
-    setSession(nextSession);
+    // 送信中に二重送信されると、古いレスポンスが次の問題の表示に紛れ込む
+    // （セッションも二重に進んでしまう）ため、送信中は再入をブロックする。
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const question = questions[displayedIndex];
+      const { isCorrect, session: nextSession } = await submitQuizAnswerFor(unit.id, question.id, inputValue);
+      setFeedback({ isCorrect, correctAnswer: question.answer });
+      setResultCount((prev) => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
+      setSession(nextSession);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function goToNext() {
@@ -310,10 +319,10 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
           />
           <button
             type="submit"
-            disabled={inputValue.trim().length === 0}
+            disabled={inputValue.trim().length === 0 || isSubmitting}
             className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
           >
-            答える
+            {isSubmitting ? "送信中…" : "答える"}
           </button>
         </form>
       ) : (
