@@ -198,7 +198,7 @@ export const learningUnits: LearningUnit[] = [
     },
     "Japanese",
   ),
-  // 漢字小テストI（全56問、書き・読みの2形式）。小テストII・IIIは後日追加予定。
+  // 漢字小テストI（全56問、書き・読みの2形式）。小テストIIIは後日追加予定。
   LearningUnit.create(
     {
       id: "unit-japanese-kanji-test1-write",
@@ -214,6 +214,27 @@ export const learningUnits: LearningUnit[] = [
       id: "unit-japanese-kanji-test1-read",
       curriculumId: "curriculum-japanese",
       title: "漢字小テストI（読み）",
+      difficulty: 2,
+      questionType: "KanjiReading",
+    },
+    "Japanese",
+  ),
+  // 漢字小テストII（全77問、書き・読みの2形式）。
+  LearningUnit.create(
+    {
+      id: "unit-japanese-kanji-test2-write",
+      curriculumId: "curriculum-japanese",
+      title: "漢字小テストII（書き）",
+      difficulty: 3,
+      questionType: "KanjiWriting",
+    },
+    "Japanese",
+  ),
+  LearningUnit.create(
+    {
+      id: "unit-japanese-kanji-test2-read",
+      curriculumId: "curriculum-japanese",
+      title: "漢字小テストII（読み）",
       difficulty: 2,
       questionType: "KanjiReading",
     },
@@ -395,6 +416,110 @@ const kanjiTest1ReadQuestions: Question[] = KANJI_TEST_1_ITEMS.map((item, index)
   }),
 );
 
+// 漢字小テストII（第二回）の原本データ。書き（文中のカタカナ→漢字）と
+// 読み（漢字→ひらがな）の両テストを、この1つの語彙リストから生成する。
+// 小テストIとは異なり、原文のカタカナの一部（7問）が熟語の正しい読みと
+// 一致していなかった（濁点の誤り等、ソースの表記ゆれ・誤記と判断）。該当する
+// 7問（2, 7, 16, 23, 30, 31, 33番）は、ユーザー確認のうえ熟語の正しい読みを
+// readingに採用し、文中のカタカナ（書きテストの問題文）はソースのまま変更していない。
+const KANJI_TEST_2_ITEMS: { sentence: string; kanji: string; reading: string }[] = [
+  { sentence: "ユウカンに闘う。", kanji: "勇敢", reading: "ゆうかん" },
+  { sentence: "警報がカレイする。", kanji: "緩和", reading: "かんわ" },
+  { sentence: "警戒をユルメル。", kanji: "緩める", reading: "ゆるめる" },
+  { sentence: "文化祭のキカクを練る。", kanji: "企画", reading: "きかく" },
+  { sentence: "事業をクワダてる。", kanji: "企", reading: "くわだ" },
+  { sentence: "キチュウと書いた紙。", kanji: "忌中", reading: "きちゅう" },
+  { sentence: "衛星のギドウを正す。", kanji: "軌道", reading: "きどう" },
+  { sentence: "キセイの事実となる。", kanji: "既成", reading: "きせい" },
+  { sentence: "その事はスデに連絡した。", kanji: "既に", reading: "すで" },
+  { sentence: "祖父にショウギを習う。", kanji: "将棋", reading: "しょうぎ" },
+  { sentence: "権利をホウキする。", kanji: "放棄", reading: "ほうき" },
+  { sentence: "運動会のキバ戦。", kanji: "騎馬", reading: "きば" },
+  { sentence: "サギの容疑者が捕まる。", kanji: "詐欺", reading: "さぎ" },
+  { sentence: "敵をアザムク作戦を練る。", kanji: "欺く", reading: "あざむく" },
+  { sentence: "ギセイ的精神。", kanji: "犠牲", reading: "ぎせい" },
+  { sentence: "かわいいのギクの花。", kanji: "菊", reading: "きく" },
+  { sentence: "勝利のキッポウが届く。", kanji: "吉報", reading: "きっぽう" },
+  { sentence: "フキツな予感がする。", kanji: "不吉", reading: "ふきつ" },
+  { sentence: "キツエンを禁じる。", kanji: "喫煙", reading: "きつえん" },
+  { sentence: "動物をギャクタイする。", kanji: "虐待", reading: "ぎゃくたい" },
+  { sentence: "キョエイシンを捨てる。", kanji: "虚栄心", reading: "きょえいしん" },
+  { sentence: "船でカイキョウを渡る。", kanji: "海峡", reading: "かいきょう" },
+  { sentence: "キョワク状が届く。", kanji: "脅迫", reading: "きょうはく" },
+  { sentence: "犯人のオドシに屈する。", kanji: "脅し", reading: "おどし" },
+  { sentence: "一点をギョウシする。", kanji: "凝視", reading: "ぎょうし" },
+  { sentence: "肩がコる。", kanji: "凝", reading: "こ" },
+  { sentence: "食パンをゲンキンで買う。", kanji: "現金", reading: "げんきん" },
+  { sentence: "キンキュウに連絡する。", kanji: "緊急", reading: "きんきゅう" },
+  { sentence: "グレツな行為を非難する。", kanji: "愚劣", reading: "ぐれつ" },
+  { sentence: "オロカナ考えと気付く。", kanji: "愚か", reading: "おろか" },
+  { sentence: "グウセンの一致。", kanji: "偶然", reading: "ぐうぜん" },
+  { sentence: "タイグウの改善を求める。", kanji: "待遇", reading: "たいぐう" },
+  { sentence: "ケイバンを受ける。", kanji: "刑罰", reading: "けいばつ" },
+  { sentence: "ケイヤクが成立する。", kanji: "契約", reading: "けいやく" },
+  { sentence: "自己をケイハツする。", kanji: "啓発", reading: "けいはつ" },
+  { sentence: "ケイジバンに張り出す。", kanji: "掲示板", reading: "けいじばん" },
+  { sentence: "国旗をカカげる。", kanji: "掲", reading: "かか" },
+  { sentence: "ケイタイ用のラジオ。", kanji: "携帯", reading: "けいたい" },
+  { sentence: "建設工事にタズサわる。", kanji: "携", reading: "たずさ" },
+  { sentence: "一時間のキュウケイ。", kanji: "休憩", reading: "きゅうけい" },
+  { sentence: "市民のイコイの場所。", kanji: "憩い", reading: "いこい" },
+  { sentence: "ヨウケイ場を見学する。", kanji: "養鶏", reading: "ようけい" },
+  { sentence: "ニワトリを飼っている。", kanji: "鶏", reading: "にわとり" },
+  { sentence: "日本のホゲイ船。", kanji: "捕鯨", reading: "ほげい" },
+  { sentence: "クジラが潮を吹く。", kanji: "鯨", reading: "くじら" },
+  { sentence: "生活費をケンヤクする。", kanji: "倹約", reading: "けんやく" },
+  { sentence: "ケンメイな方法を探す。", kanji: "賢明", reading: "けんめい" },
+  { sentence: "イルカはカシコイ動物だ。", kanji: "賢", reading: "かしこい" },
+  { sentence: "ゲンカク症状が現れる。", kanji: "幻覚", reading: "げんかく" },
+  { sentence: "マボロシが見える。", kanji: "幻", reading: "まぼろし" },
+  { sentence: "コリツ無援となる。", kanji: "孤立", reading: "こりつ" },
+  { sentence: "コを描いて飛ぶ。", kanji: "弧", reading: "こ" },
+  { sentence: "コヨウ契約を結ぶ。", kanji: "雇用", reading: "こよう" },
+  { sentence: "助手をヤトウ。", kanji: "雇", reading: "やとう" },
+  { sentence: "クラブのコモンの先生。", kanji: "顧問", reading: "こもん" },
+  { sentence: "幼児時代をカエリみる。", kanji: "顧", reading: "かえり" },
+  { sentence: "ゴラク施設が増える。", kanji: "娯楽", reading: "ごらく" },
+  { sentence: "カクゴを決める。", kanji: "覚悟", reading: "かくご" },
+  { sentence: "自分の非をサトる。", kanji: "悟", reading: "さと" },
+  { sentence: "葉のキコウが開閉する。", kanji: "気孔", reading: "きこう" },
+  { sentence: "コウミョウな手口。", kanji: "巧妙", reading: "こうみょう" },
+  { sentence: "タクミに操る。", kanji: "巧", reading: "たくみ" },
+  { sentence: "手のコウに薬を塗る。", kanji: "甲", reading: "こう" },
+  { sentence: "船のカンパン。", kanji: "甲板", reading: "かんぱん" },
+  { sentence: "鉱山のハイコウ。", kanji: "廃坑", reading: "はいこう" },
+  { sentence: "自由をコウソクする。", kanji: "拘束", reading: "こうそく" },
+  { sentence: "コウガイを散歩する.", kanji: "郊外", reading: "こうがい" },
+  { sentence: "手帳にヒカエル。", kanji: "控える", reading: "ひかえる" },
+  { sentence: "突然の来客にアワテル。", kanji: "慌てる", reading: "あわてる" },
+  { sentence: "キョウコウ手段を取る。", kanji: "強硬", reading: "きょうこう" },
+  { sentence: "カタイ表現を言い換える。", kanji: "硬", reading: "かたい" },
+  { sentence: "知恵をシボる。", kanji: "絞", reading: "しぼ" },
+  { sentence: "自分で自分の首をシメル。", kanji: "締める", reading: "しめる" },
+  { sentence: "研究ヨウコウを発表する。", kanji: "要綱", reading: "ようこう" },
+  { sentence: "サーカスのツナワタリ。", kanji: "綱渡り", reading: "つなわたり" },
+  { sentence: "牛乳をハッコウさせる。", kanji: "発酵", reading: "はっこう" },
+  { sentence: "困難をコクフクする。", kanji: "克服", reading: "こくふく" },
+];
+
+const kanjiTest2WriteQuestions: Question[] = KANJI_TEST_2_ITEMS.map((item, index) =>
+  Question.create({
+    id: `q-japanese-kanji-test2-write-${String(index + 1).padStart(2, "0")}`,
+    learningUnitId: "unit-japanese-kanji-test2-write",
+    prompt: item.sentence,
+    answer: item.kanji,
+  }),
+);
+
+const kanjiTest2ReadQuestions: Question[] = KANJI_TEST_2_ITEMS.map((item, index) =>
+  Question.create({
+    id: `q-japanese-kanji-test2-read-${String(index + 1).padStart(2, "0")}`,
+    learningUnitId: "unit-japanese-kanji-test2-read",
+    prompt: item.kanji,
+    answer: item.reading,
+  }),
+);
+
 // 数学の出題形式別ユニット（unit-math-calc-1 / unit-math-word-1）向けの実際の問題例。
 export const questions: Question[] = [
   Question.create({
@@ -429,4 +554,6 @@ export const questions: Question[] = [
   }),
   ...kanjiTest1WriteQuestions,
   ...kanjiTest1ReadQuestions,
+  ...kanjiTest2WriteQuestions,
+  ...kanjiTest2ReadQuestions,
 ];

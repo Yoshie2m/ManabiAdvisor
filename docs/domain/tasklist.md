@@ -248,3 +248,15 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/app/academy/page.tsx` に「テストを受ける」ボタンと `QuizTakingPanel` コンポーネントを追加（進捗バー・カタカナ/熟語の強調表示・入力欄・正誤フィードバック・中断時の再開ダイアログ「続きから／最初からやり直す」・完了時の結果画面）。既存の読み取り専用「問題を見る」ボタンは変更せず共存させる
 - [x] `docs/domain/glossary.md`に`QuizSession`/`AnswerCorrectnessPolicy`/テスト受験フローを追記
 - [x] `npx tsc --noEmit` / `npm test`（29ファイル・128テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 18. 魔力修練コンテキスト（漢字小テストIIの追加）✅実装済み
+
+ユーザー提供ファイル（`kanji_test_02.txt`、「漢字テスト（第二回）」77問）を「中2の漢字小テストII」として登録。`specs/mana-cultivation.md` の「意思決定の経緯（第10回ヒアリング）」節を参照。小テストIと異なり、ソースのカタカナ7問分が熟語の正しい読みと一致していなかったため、該当問題はユーザー確認のうえ熟語の標準的な読みを採用した（書きテストの問題文はソースのまま変更していない）。
+
+- [x] `infrastructure/memory/seedData.ts` に国語の出題形式別ユニットを2件追加（`unit-japanese-kanji-test2-write` / `unit-japanese-kanji-test2-read`）、`KANJI_TEST_2_ITEMS`（77件）から `Question` を154件（書き77件・読み77件）生成して追加
+- [x] 77問全件についてカタカナ区間と解答（熟語）の読みの整合性をスクリプトで突き合わせ、不一致の7問（2, 7, 16, 23, 30, 31, 33番）を特定してユーザーに提示・対応方針を確認
+- [x] `npm run seed` でFirestoreに再投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）
+- [x] Node上で `seedData.ts` を直接読み込み、新ユニット2件・`Question`154件が例外なく生成されることを確認
+- [x] 既存の「テストを受ける」機能（17番）は `questionType` ベースの汎用実装のため、コード変更無しで小テストIIにもそのまま適用されることを確認
+- [x] `docs/domain/specs/mana-cultivation.md`に第10回ヒアリング節を追記
+- [x] `npx tsc --noEmit` / `npm test`（29ファイル・128テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
