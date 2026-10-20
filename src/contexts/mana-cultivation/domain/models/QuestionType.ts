@@ -6,6 +6,8 @@ export const QUESTION_TYPES = [
   "PassageTranslationToEnglish", // 英訳問題（英語）
   "Calculation", // 計算問題（数学）
   "WordProblem", // 文章題（数学）
+  "KanjiWriting", // 漢字の書き（国語）
+  "KanjiReading", // 漢字の読み（国語）
 ] as const;
 
 export type QuestionType = (typeof QUESTION_TYPES)[number];

@@ -9,6 +9,7 @@ export interface SubjectQuestionTypePolicy {
 const QUESTION_TYPES_BY_SUBJECT: Partial<Record<Subject, readonly QuestionType[]>> = {
   English: ["VocabularyTest", "PassageTranslationToJapanese", "PassageTranslationToEnglish"],
   Math: ["Calculation", "WordProblem"],
+  Japanese: ["KanjiWriting", "KanjiReading"],
 };
 
 export const subjectQuestionTypePolicy: SubjectQuestionTypePolicy = {

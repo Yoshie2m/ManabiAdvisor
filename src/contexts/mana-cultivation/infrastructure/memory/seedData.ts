@@ -198,6 +198,27 @@ export const learningUnits: LearningUnit[] = [
     },
     "Japanese",
   ),
+  // 漢字小テストI（全56問、書き・読みの2形式）。小テストII・IIIは後日追加予定。
+  LearningUnit.create(
+    {
+      id: "unit-japanese-kanji-test1-write",
+      curriculumId: "curriculum-japanese",
+      title: "漢字小テストI（書き）",
+      difficulty: 3,
+      questionType: "KanjiWriting",
+    },
+    "Japanese",
+  ),
+  LearningUnit.create(
+    {
+      id: "unit-japanese-kanji-test1-read",
+      curriculumId: "curriculum-japanese",
+      title: "漢字小テストI（読み）",
+      difficulty: 2,
+      questionType: "KanjiReading",
+    },
+    "Japanese",
+  ),
   // 徹底演習テキスト 中2（受験研究社）単元4 電流とその利用。各節を1ユニットとする。
   LearningUnit.create(
     { id: "unit-science-u4-c1-s1", curriculumId: "curriculum-science", title: "1章 電流の性質 1: 電流が流れる道すじ", difficulty: 1 },
@@ -292,6 +313,88 @@ export const upcomingExams: UpcomingExam[] = [
   ]),
 ];
 
+// 漢字小テストI（第一回）の原本データ。書き（文中のカタカナ→漢字）と
+// 読み（漢字→ひらがな）の両テストを、この1つの語彙リストから生成する。
+// 読みは原文のカタカナ部分をそのままひらがなに変換したもの（ふりがなデータは
+// 原本に含まれていないが、設問文中のカタカナ自体が読みと一致するため導出できる）。
+// 小テストII・IIIは別途データが揃った時点で同じ形で追加する。
+const KANJI_TEST_1_ITEMS: { sentence: string; kanji: string; reading: string }[] = [
+  { sentence: "人生のヒアイを見る。", kanji: "悲哀", reading: "ひあい" },
+  { sentence: "アワレミの表情。", kanji: "哀れみ", reading: "あわれみ" },
+  { sentence: "会社のイアン旅行。", kanji: "慰安", reading: "いあん" },
+  { sentence: "傷心の友をナグサめる。", kanji: "慰", reading: "なぐさ" },
+  { sentence: "詩をロウエイする。", kanji: "朗詠", reading: "ろうえい" },
+  { sentence: "一人でエツに入る。", kanji: "悦", reading: "えつ" },
+  { sentence: "図書館のエツランする。", kanji: "閲覧", reading: "えつらん" },
+  { sentence: "城がエンジョウする。", kanji: "炎上", reading: "えんじょう" },
+  { sentence: "ホノオに包まれる。", kanji: "炎", reading: "ほのお" },
+  { sentence: "にぎやかなエンカイ。", kanji: "宴会", reading: "えんかい" },
+  { sentence: "オウベイ諸国との貿易。", kanji: "欧米", reading: "おうべい" },
+  { sentence: "力いっぱいナグる。", kanji: "殴", reading: "なぐ" },
+  { sentence: "コウオツ付けがたい。", kanji: "甲乙", reading: "こうおつ" },
+  { sentence: "小売店に品物をオロす。", kanji: "卸", reading: "おろ" },
+  { sentence: "オロシドンヤの主人。", kanji: "卸問屋", reading: "おろしどんや" },
+  { sentence: "オンワな性格の人。", kanji: "温和", reading: "おんわ" },
+  { sentence: "オダヤカな気候。", kanji: "穏やか", reading: "おだやか" },
+  { sentence: "カサクに入選する。", kanji: "佳作", reading: "かさく" },
+  { sentence: "カクウの話をする。", kanji: "架空", reading: "かくう" },
+  { sentence: "橋をカける。", kanji: "架", reading: "か" },
+  { sentence: "ゴウカな調度品。", kanji: "豪華", reading: "ごうか" },
+  { sentence: "ハナヤカな衣装。", kanji: "華やか", reading: "はなやか" },
+  { sentence: "ハナヨメ衣装を調える。", kanji: "花嫁", reading: "はなよめ" },
+  { sentence: "姉が他家にトツぐ。", kanji: "嫁", reading: "とつ" },
+  { sentence: "食糧難でガシする。", kanji: "餓死", reading: "がし" },
+  { sentence: "夏の夜のカイダン話。", kanji: "怪談", reading: "かいだん" },
+  { sentence: "人にアヤしまれる。", kanji: "怪", reading: "あや" },
+  { sentence: "コウカイ先に立たず。", kanji: "後悔", reading: "こうかい" },
+  { sentence: "過ぎ去ったことをクやむ。", kanji: "悔", reading: "く" },
+  { sentence: "クヤシイ思いをする。", kanji: "悔しい", reading: "くやしい" },
+  { sentence: "キンカイを輸送する。", kanji: "金塊", reading: "きんかい" },
+  { sentence: "巨大な肉のカタマリ。", kanji: "塊", reading: "かたまり" },
+  { sentence: "カンガイ無量になる。", kanji: "感慨", reading: "かんがい" },
+  { sentence: "ガイトウシャがいない。", kanji: "該当者", reading: "がいとうしゃ" },
+  { sentence: "計画のガイリャクを話す。", kanji: "概略", reading: "がいりゃく" },
+  { sentence: "鉛筆でリンカクを描く。", kanji: "輪郭", reading: "りんかく" },
+  { sentence: "他からカクリされた空間。", kanji: "隔離", reading: "かくり" },
+  { sentence: "道をヘダてた向かい側。", kanji: "隔", reading: "へだ" },
+  { sentence: "大きなシュウカクだ。", kanji: "収穫", reading: "しゅうかく" },
+  { sentence: "中部地方のサンガク地帯。", kanji: "山岳", reading: "さんがく" },
+  { sentence: "谷川ダケを縦走する。", kanji: "岳", reading: "だけ" },
+  { sentence: "ベンチに腰をカける。", kanji: "掛", reading: "か" },
+  { sentence: "駅のシュッサツがかり。", kanji: "出札", reading: "しゅっさつ" },
+  { sentence: "物事がエンカツに進む。", kanji: "円滑", reading: "えんかつ" },
+  { sentence: "氷の上をスベる。", kanji: "滑", reading: "すべ" },
+  { sentence: "ナメラカな曲線を描く。", kanji: "滑らか", reading: "なめらか" },
+  { sentence: "カンゾウを患う。", kanji: "肝臓", reading: "かんぞう" },
+  { sentence: "キモに銘ずる。", kanji: "肝", reading: "きも" },
+  { sentence: "カンコン葬祭の手引き。", kanji: "冠婚", reading: "かんこん" },
+  { sentence: "黄金のカンムリ。", kanji: "冠", reading: "かんむり" },
+  { sentence: "カンチがいも甚だしい。", kanji: "勘違", reading: "かんち" },
+  { sentence: "トンネルがカンツウした。", kanji: "貫通", reading: "かんつう" },
+  { sentence: "初志をツラヌく。", kanji: "貫", reading: "つらぬ" },
+  { sentence: "注意をカンキする。", kanji: "喚起", reading: "かんき" },
+  { sentence: "方向をテンカンする。", kanji: "転換", reading: "てんかん" },
+  { sentence: "電車を乗りカえる。", kanji: "換", reading: "か" },
+];
+
+const kanjiTest1WriteQuestions: Question[] = KANJI_TEST_1_ITEMS.map((item, index) =>
+  Question.create({
+    id: `q-japanese-kanji-test1-write-${String(index + 1).padStart(2, "0")}`,
+    learningUnitId: "unit-japanese-kanji-test1-write",
+    prompt: item.sentence,
+    answer: item.kanji,
+  }),
+);
+
+const kanjiTest1ReadQuestions: Question[] = KANJI_TEST_1_ITEMS.map((item, index) =>
+  Question.create({
+    id: `q-japanese-kanji-test1-read-${String(index + 1).padStart(2, "0")}`,
+    learningUnitId: "unit-japanese-kanji-test1-read",
+    prompt: item.kanji,
+    answer: item.reading,
+  }),
+);
+
 // 数学の出題形式別ユニット（unit-math-calc-1 / unit-math-word-1）向けの実際の問題例。
 export const questions: Question[] = [
   Question.create({
@@ -324,4 +427,6 @@ export const questions: Question[] = [
     prompt: "1から9までの数字が1つずつ書かれた9枚のカードから1枚引くとき、引いたカードが3の倍数である確率を求めなさい。",
     answer: "1/3（9枚中3枚）",
   }),
+  ...kanjiTest1WriteQuestions,
+  ...kanjiTest1ReadQuestions,
 ];

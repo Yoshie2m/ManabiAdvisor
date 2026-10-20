@@ -30,4 +30,16 @@ describe("subjectQuestionTypePolicy", () => {
       expect(subjectQuestionTypePolicy.isSatisfiedBy(subject, "Calculation")).toBe(false);
     }
   });
+
+  it("allows KanjiWriting and KanjiReading for Japanese", () => {
+    for (const questionType of ["KanjiWriting", "KanjiReading"] as const) {
+      expect(subjectQuestionTypePolicy.isSatisfiedBy("Japanese", questionType)).toBe(true);
+    }
+  });
+
+  it("rejects Japanese question types for other subjects", () => {
+    for (const subject of ["English", "Math", "Science", "SocialStudies"] as const) {
+      expect(subjectQuestionTypePolicy.isSatisfiedBy(subject, "KanjiWriting")).toBe(false);
+    }
+  });
 });

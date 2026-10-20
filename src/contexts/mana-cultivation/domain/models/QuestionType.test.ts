@@ -3,13 +3,15 @@ import { describe, expect, it } from "vitest";
 import { isQuestionType, QUESTION_TYPES } from "./QuestionType";
 
 describe("QuestionType", () => {
-  it("has the English and Math question types", () => {
+  it("has the English, Math and Japanese question types", () => {
     expect(QUESTION_TYPES).toEqual([
       "VocabularyTest",
       "PassageTranslationToJapanese",
       "PassageTranslationToEnglish",
       "Calculation",
       "WordProblem",
+      "KanjiWriting",
+      "KanjiReading",
     ]);
   });
 

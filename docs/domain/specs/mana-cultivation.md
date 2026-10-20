@@ -9,9 +9,9 @@
 2. 「主要5科目の学習（学習ユニットの完了）によって、生徒の科目別能力が成長する」という**能力成長ルール**（ユーザーヒアリング済み、下記「意思決定の経緯（第1回）」参照）。
 3. 「過去の間違い問題から単元理解度を算出し、次のテスト範囲からデイリーミッションを生成する。また次テスト範囲の予想問題ミッションを選択できる」という**ミッション生成ルール**（ユーザーヒアリング済み、下記「意思決定の経緯（第2回）」参照）。
 4. 「中1〜高3を貫く7段階の学年進行（Grade）のうち、プレ期間（小6）とセカンドグレード（中2）を選択できる」という**学年段階モデル**（ユーザーヒアリング済み、下記「意思決定の経緯（第3回）」参照）。
-5. 「英語に単語テスト・本文の和訳・英訳問題という出題形式を追加する」という**出題形式モデル**（本追記分。ユーザーヒアリング済み、下記「意思決定の経緯（第4回）」参照）。
+5. 「英語に単語テスト・本文の和訳・英訳問題、数学に計算問題・文章題、国語に漢字の書き・読みという出題形式を追加する」という**出題形式モデル**（ユーザーヒアリング済み、下記「意思決定の経緯（第4回・第6回・第8回）」参照）。
 
-項目1〜4はドメイン層に加え、動作確認用のユースケース層・インメモリインフラ層・UIまで実装済み（`tasklist.md` 参照）。項目5（本追記）もドメイン層・インメモリシードデータ・UIまで実装済み。
+項目1〜4はドメイン層に加え、動作確認用のユースケース層・インメモリインフラ層・UIまで実装済み（`tasklist.md` 参照）。項目5もドメイン層・インメモリシードデータ・UIまで実装済み。
 
 ## 意思決定の経緯（第1回ヒアリング: 能力成長ルール）
 
@@ -74,6 +74,16 @@
 1. **格納場所**: `LearningUnit`（構造）とは分離し、新しいFirestoreコレクション `questions/{questionId}` に格納する（`CLAUDE.md` の構造とコンテンツ本体の分離方針に従う）。
 2. **ドメインモデル**: `Question` エンティティ（`{ id, learningUnitId, prompt, answer }`）を新設する。`prompt`/`answer` が空文字なら生成時に例外を投げる。1つの `LearningUnit` に対し0件以上の `Question` が属する（単語テスト・計算問題は複数件、本文の和訳/英訳のような1件だけのユニットもあり得る）。
 3. **実データ**: 今回は例として数件作成する。対象は現在 `questionType` を持つ唯一のユニット群（数学の `unit-math-calc-1` / `unit-math-word-1`）。第1章「式の計算」の計算問題3件、第6章「確率と標本調査」の文章題2件を作成した。英語の単語テスト・和訳・英訳問題は、対応するLearningUnitが現状存在しないため今回は対象外（将来追加する場合は同じ`Question`の仕組みで対応できる）。
+
+## 意思決定の経緯（第8回ヒアリング: 漢字小テストIの追加）
+
+実装前にユーザーへ確認し、以下の方針で合意済み:
+
+1. **対象科目・ソース**: `Japanese`（国語）に初めて `QuestionType` を追加する。ユーザー提供ファイル（「漢字テスト（第一回）」、カタカナを含む文56問＋熟語の解答）を「中2の漢字小テストI」として登録する。残りの小テストII・IIIは別途データが提供された時点で後日追加する（本追記のスコープ外）。
+2. **追加するQuestionType**: `KanjiWriting`（漢字の書き）・`KanjiReading`（漢字の読み）の2種類。`QUESTION_TYPES_BY_SUBJECT.Japanese` に追加（従来は空だった）。
+3. **LearningUnitの分割**: 「書き」と「読み」は同じ元データ（56問）から生成するが、別々の `LearningUnit`（`unit-japanese-kanji-test1-write` / `unit-japanese-kanji-test1-read`）として表現する（既存の「出題形式は単元とは独立した別概念」という第4回ヒアリングの方針を踏襲）。
+4. **読み（ふりがな）データの扱い**: ソースファイルには「書き」の解答（熟語）のみ含まれ、読みの数据は明記されていなかった。確認の結果、各問題文中のカタカナ区間自体が読みの正解と完全に一致しており（モデルが新たに知識を生成するのではなく、ソース内の既存データをそのまま機械的に抽出できる）、56問全件をこの方法で導出した。導出結果は実装前にユーザーへ提示し、承認を得た。
+5. **実データ**: 56問分の `Question`（書き56件・読み56件、計112件）を `unit-japanese-kanji-test1-write` / `unit-japanese-kanji-test1-read` にそれぞれ投入した。
 
 ### Question（エンティティ）
 
@@ -474,6 +484,12 @@ interface CurriculumRepository {
 - [x] `LearningUnit.create` は `subject` と `questionType` の組み合わせが `SubjectQuestionTypePolicy` を満たせば正常に生成できる
 - [x] `LearningUnit.create` は `subject` が `questionType` をサポートしない場合（例: `Math` × `VocabularyTest`）に例外を投げる
 
+### 国語の出題形式（第8回ヒアリング分）のテスト不変条件 — 実装・テスト済み
+
+- [x] `QuestionType` の妥当な値（7種、`KanjiWriting`/`KanjiReading`を含む）・`isQuestionType` の真偽判定
+- [x] `subjectQuestionTypePolicy`: `Japanese` は `KanjiWriting`/`KanjiReading` の2形式でtrue
+- [x] `subjectQuestionTypePolicy`: Japanese以外の科目は `KanjiWriting` を含めどの形式もfalse
+
 ## スコープ外（残課題。本追記には含まない）
 
 1. **`CultivationProgressRepository`（永続化）**: ドメイン層設計時点では未設計だったが、動作確認用システム構築時にインメモリ実装込みで用意した（`tasklist.md` 参照）。具象実装 `FirebaseCultivationProgressRepository` を実装済み。Firestoreの `cultivationProgress/{studentId}` コレクションに `{ grade, abilities, understandingLevels, currentDailyMission, currentMockExamMission }` の形で永続化する。復元時は `CultivationProgress.reconstruct` を使う（詳細は `tasklist.md` 7番参照）。
@@ -484,7 +500,7 @@ interface CurriculumRepository {
 6. **進級（Gradeの変更）**: `CultivationProgress.initiate` で確定した `Grade` を後から変更する操作（例: セカンドグレード→サードグレードへの進級）。ヒアリングの結果、今回は不要と判断し見送った（第5回ヒアリング、`tasklist.md` 参照）。対応グレードのコンテンツ整備（次項）を優先する。
 7. **First/Third/Fourth/Fifth/Sixthグレードの中身**: `Grade` 型には定義済みだが、対応する `ExamType`・`Curriculum`・`LearningUnit` はまだ無い。学年を1つ開放するごとに、`ExamType` への追加・`GradeExamTypePolicy` の `REGULAR_EXAM_TYPE_BY_GRADE` への追加・該当カリキュラムの用意が必要。ヒアリングの結果、今回は不要と判断し見送った（`README.md`/`CLAUDE.md` 記載の対応学習領域の範囲外、`tasklist.md` 参照）。
 8. **大学受験（最終ゴール）**: 「シックスグレードの先にあるゴール」という位置づけのみで、型やExamTypeとしては未着手。ヒアリングの結果、今回も不要と判断し見送った（第1回ヒアリングの結論を再確認）。
-9. **問題文・単語リスト・正解などのコンテンツ本体**: `QuestionType` はあくまで「出題形式の種類」という構造情報のみ。実際の単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体は、`CLAUDE.md` の方針通りFirestoreに格納する想定で、今回はモデル化・実データ投入のいずれも行っていない（動作確認用のseedDataはタイトルのみのダミー）。→ 第7回ヒアリングで`Question`エンティティとして実装済み（下記参照）。現状は数学の2ユニットのみ実データあり。
-10. **English以外の科目のQuestionType**: `SubjectQuestionTypePolicy` は `English` のみ対応表を持つ。他科目（数学の「計算問題」等）に出題形式を追加する場合は、改めてヒアリングのうえ `QUESTION_TYPES_BY_SUBJECT` に追加する。→ 第6回ヒアリングで `Math`（`Calculation`/`WordProblem`）を追加済み（下記参照）。`Japanese`/`Science`/`SocialStudies` は引き続き未対応。
+9. **問題文・単語リスト・正解などのコンテンツ本体**: `QuestionType` はあくまで「出題形式の種類」という構造情報のみ。実際の単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体は、`CLAUDE.md` の方針通りFirestoreに格納する想定。→ 第7回ヒアリングで`Question`エンティティとして実装済み（下記参照）。第8回ヒアリングで国語の漢字小テストI（書き56件・読み56件）を追加済み。現状は数学の2ユニット・国語の2ユニットに実データあり。
+10. **English以外の科目のQuestionType**: `SubjectQuestionTypePolicy` は当初 `English` のみ対応表を持っていた。他科目に出題形式を追加する場合は、改めてヒアリングのうえ `QUESTION_TYPES_BY_SUBJECT` に追加する。→ 第6回ヒアリングで `Math`（`Calculation`/`WordProblem`）、第8回ヒアリングで `Japanese`（`KanjiWriting`/`KanjiReading`）を追加済み（下記参照）。`Science`/`SocialStudies` は引き続き未対応。
 
 これらは `tasklist.md` に別タスクとして追加する。

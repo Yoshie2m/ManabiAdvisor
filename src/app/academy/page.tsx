@@ -48,14 +48,40 @@ const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
   PassageTranslationToEnglish: "英訳問題",
   Calculation: "計算問題",
   WordProblem: "文章題",
+  KanjiWriting: "漢字（書き）",
+  KanjiReading: "漢字（読み）",
 };
 
-const QUESTION_TYPE_TO_QUIZ_KIND: Record<QuestionType, QuizKind> = {
-  VocabularyTest: "vocabulary",
-  PassageTranslationToJapanese: "ja-translation",
-  PassageTranslationToEnglish: "en-translation",
-  Calculation: "math",
-  WordProblem: "math",
+// QuestionTypeごとのQuizCard表示設定。kindの既定文言では合わない組み合わせ
+// （国語の漢字など）は chapter/instruction/言語を明示的に上書きする。
+type QuizCardPresetProps = {
+  kind: QuizKind;
+  chapter?: string;
+  instruction?: string;
+  promptLang?: string;
+  answerLang?: string;
+};
+
+const QUIZ_CARD_PRESET_BY_QUESTION_TYPE: Record<QuestionType, QuizCardPresetProps> = {
+  VocabularyTest: { kind: "vocabulary" },
+  PassageTranslationToJapanese: { kind: "ja-translation" },
+  PassageTranslationToEnglish: { kind: "en-translation" },
+  Calculation: { kind: "math" },
+  WordProblem: { kind: "math" },
+  KanjiWriting: {
+    kind: "ja-translation",
+    chapter: "Kanji · 書き",
+    instruction: "次の文のカタカナを漢字に直しなさい。",
+    promptLang: "ja",
+    answerLang: "ja",
+  },
+  KanjiReading: {
+    kind: "vocabulary",
+    chapter: "Kanji · 読み",
+    instruction: "次の漢字の読みをひらがなで答えなさい。",
+    promptLang: "ja",
+    answerLang: "ja",
+  },
 };
 
 const GRADE_LABEL: Record<Grade, string> = {
@@ -163,7 +189,7 @@ function LearningUnitRow({
             questions.map((question, index) => (
               <QuizCard
                 key={question.id}
-                kind={QUESTION_TYPE_TO_QUIZ_KIND[unit.questionType as QuestionType]}
+                {...QUIZ_CARD_PRESET_BY_QUESTION_TYPE[unit.questionType as QuestionType]}
                 prompt={question.prompt}
                 answer={question.answer}
                 number={index + 1}

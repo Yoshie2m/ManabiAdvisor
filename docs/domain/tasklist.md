@@ -221,3 +221,15 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/app/academy/page.tsx` の自作タブ切り替え・絵文字を`TabBar`/`TabIcon`に置き換え。タブidを`hall`/`library`/`tower`（デザインシステムの既定値）に統一し、幻影の塔タブに残ニガテ数のバッジを表示
 - [x] `docs/domain/glossary.md`に`TabIcon`/`TabBar`を追記
 - [x] `npx tsc --noEmit` / `npm test`（25ファイル・104テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 16. 魔力修練コンテキスト（漢字小テストIの追加）✅実装済み
+
+ユーザー提供ファイル（`kanji_test_01_final.txt`、「漢字テスト（第一回）」56問）を「中2の漢字小テストI」として登録。`specs/mana-cultivation.md` の「意思決定の経緯（第8回ヒアリング）」節でヒアリング済み。残りの小テストII・IIIは別途データが提供された時点で後日追加する（本タスクのスコープ外）。
+
+- [x] `domain/models/QuestionType.ts` に `KanjiWriting`（漢字の書き）・`KanjiReading`（漢字の読み）を追加 ＋ テスト更新
+- [x] `domain/specs/SubjectQuestionTypePolicy.ts` の対応表に `Japanese: ["KanjiWriting", "KanjiReading"]` を追加 ＋ テスト追加
+- [x] ソースファイルの56問について、問題文中のカタカナ区間が読みの正解と一致することを確認し、読み（ふりがな）データを機械的に導出（新規の知識生成ではない）。実装前に全56件の導出結果をユーザーに提示し承認を得た
+- [x] `infrastructure/memory/seedData.ts` に国語の出題形式別ユニットを2件追加（`unit-japanese-kanji-test1-write` / `unit-japanese-kanji-test1-read`）、`Question` を112件追加（書き56件・読み56件）し、`npm run seed` でFirestoreに再投入（一時的に書き込みを許可→投入後に元の拒否設定へ戻してデプロイ済み）
+- [x] `src/app/academy/page.tsx` の `QUESTION_TYPE_LABEL` に日本語ラベルを追加し、`QUESTION_TYPE_TO_QUIZ_KIND` を `QUIZ_CARD_PRESET_BY_QUESTION_TYPE` に拡張（国語向けの章名・指示文・言語設定をQuestionTypeごとに上書き）
+- [x] Firestoreへの直接クエリで書き・読み各56件の実データの読み取りを確認
+- [x] `npx tsc --noEmit` / `npm test`（26ファイル・113テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
