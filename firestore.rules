@@ -31,6 +31,9 @@ service cloud.firestore {
     match /cultivationProgress/{studentId} {
       allow read, write: if request.auth != null && request.auth.uid == studentId;
     }
+    match /quizSessions/{studentId}/units/{learningUnitId} {
+      allow read, write: if request.auth != null && request.auth.uid == studentId;
+    }
 
     // Deny everything else by default.
     match /{document=**} {

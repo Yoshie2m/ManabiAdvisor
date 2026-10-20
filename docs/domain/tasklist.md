@@ -233,3 +233,18 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/app/academy/page.tsx` の `QUESTION_TYPE_LABEL` に日本語ラベルを追加し、`QUESTION_TYPE_TO_QUIZ_KIND` を `QUIZ_CARD_PRESET_BY_QUESTION_TYPE` に拡張（国語向けの章名・指示文・言語設定をQuestionTypeごとに上書き）
 - [x] Firestoreへの直接クエリで書き・読み各56件の実データの読み取りを確認
 - [x] `npx tsc --noEmit` / `npm test`（26ファイル・113テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 17. 魔力修練コンテキスト（テスト受験フロー・QuizSessionの追加）✅実装済み
+
+ユーザーから画面構成案（進捗バー・入力欄・中断時の再開ダイアログ・オートセーブ）のペーストを受け、スコープをヒアリング済み。`specs/mana-cultivation.md` の「意思決定の経緯（第9回ヒアリング）」節を参照。対象は「漢字小テストI」の2ユニットのみ、一覧画面の進行中バッジ表示は見送り。
+
+- [x] `domain/specs/AnswerCorrectnessPolicy.ts` を新規作成（前後の空白のみ許容した完全一致判定）＋テスト
+- [x] `domain/models/QuizSession.ts` を新規作成（`start`/`reconstruct`、`currentIndex`/`isComplete`/`progressRatio`、`advance()`）＋テスト
+- [x] `domain/repositories/QuizSessionRepository.ts` を新規作成（`find`/`save`/`delete`）
+- [x] `usecase/FindQuizSession/FindQuizSession.ts`・`usecase/StartQuiz/StartQuiz.ts`・`usecase/SubmitQuizAnswer/SubmitQuizAnswer.ts` を新規作成（`SubmitQuizAnswer`は正誤判定→`recordAttempt`→セッション進行・保存→完了時は`completeLearningUnit`＋セッション削除、まで一貫して行う）＋テスト（フェイクリポジトリ）
+- [x] `infrastructure/firebase/FirebaseQuizSessionRepository.ts` を新規作成。Firestoreの `quizSessions/{studentId}/units/{learningUnitId}` サブコレクションに永続化
+- [x] `firestore.rules` に `quizSessions/{studentId}/units/{learningUnitId}` の読み書きルール（`request.auth.uid == studentId`）を追加
+- [x] `src/stores/useAcademyStore.ts` に `checkQuizSession`/`startQuizSession`/`submitQuizAnswerFor` アクションを追加（Composition Rootに `FirebaseQuizSessionRepository` と3ユースケースを追加）。`fetchQuestions` は問題IDの昇順ソートを追加（クイズの出題順を安定させるため）
+- [x] `src/app/academy/page.tsx` に「テストを受ける」ボタンと `QuizTakingPanel` コンポーネントを追加（進捗バー・カタカナ/熟語の強調表示・入力欄・正誤フィードバック・中断時の再開ダイアログ「続きから／最初からやり直す」・完了時の結果画面）。既存の読み取り専用「問題を見る」ボタンは変更せず共存させる
+- [x] `docs/domain/glossary.md`に`QuizSession`/`AnswerCorrectnessPolicy`/テスト受験フローを追記
+- [x] `npx tsc --noEmit` / `npm test`（29ファイル・128テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

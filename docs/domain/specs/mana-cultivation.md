@@ -10,8 +10,9 @@
 3. 「過去の間違い問題から単元理解度を算出し、次のテスト範囲からデイリーミッションを生成する。また次テスト範囲の予想問題ミッションを選択できる」という**ミッション生成ルール**（ユーザーヒアリング済み、下記「意思決定の経緯（第2回）」参照）。
 4. 「中1〜高3を貫く7段階の学年進行（Grade）のうち、プレ期間（小6）とセカンドグレード（中2）を選択できる」という**学年段階モデル**（ユーザーヒアリング済み、下記「意思決定の経緯（第3回）」参照）。
 5. 「英語に単語テスト・本文の和訳・英訳問題、数学に計算問題・文章題、国語に漢字の書き・読みという出題形式を追加する」という**出題形式モデル**（ユーザーヒアリング済み、下記「意思決定の経緯（第4回・第6回・第8回）」参照）。
+6. 「漢字小テストIを1問ずつ解答・採点し、中断しても続きから再開できる」という**テスト受験フロー**（ユーザーヒアリング済み、下記「意思決定の経緯（第9回）」参照）。
 
-項目1〜4はドメイン層に加え、動作確認用のユースケース層・インメモリインフラ層・UIまで実装済み（`tasklist.md` 参照）。項目5もドメイン層・インメモリシードデータ・UIまで実装済み。
+項目1〜4はドメイン層に加え、動作確認用のユースケース層・インメモリインフラ層・UIまで実装済み（`tasklist.md` 参照）。項目5・6もドメイン層・Firebaseインフラ層・UIまで実装済み。
 
 ## 意思決定の経緯（第1回ヒアリング: 能力成長ルール）
 
@@ -120,6 +121,107 @@ class GetQuestionsForLearningUnit {
 ```
 
 `src/app/academy/page.tsx` の学習ユニット一覧で、`questionType` を持つユニットに「問題を見る」ボタンを表示し、クリック時にこのユースケースを呼んで問題文・正解を表示する。
+
+## 意思決定の経緯（第9回ヒアリング: テスト受験フロー・QuizSession）
+
+ユーザーから画面構成案（進捗バー・入力欄・中断時の再開ダイアログ・オートセーブ）のペーストを受け、実装前にユーザーへ確認し、以下の方針で合意済み:
+
+1. **対象範囲**: まず「漢字小テストI（書き・読み）」の2ユニットのみを対象とする。他のQuestionTypeを持つユニット（数学等）への展開は、同じ仕組みをそのまま流用して後日拡張する。
+2. **中断データの保存単位**: 既存の `CultivationProgress` 集約には含めず、新しい集約ルート `QuizSession`（生徒×学習ユニット単位）として新設する。
+3. **成長ロジックとの連動**: 連動する。1問答えるたびに既存の `recordAttempt`（理解度記録）を呼び、最終問題を解き終えたら既存の `completeLearningUnit`（能力成長）も呼ぶ。出題形式ごとの独自の成長ロジックは追加しない（第4回ヒアリングの方針を踏襲）。
+4. **正誤判定方法**: 完全一致のみ（前後の空白はトリムして許容）。全角/半角等の表記ゆれの正規化は今回行わない。
+5. **一覧画面の「進行中40%」バッジ表示**: 今回のスコープに含めない（任意の改善として見送り）。クイズ画面内の進捗バー・オートセーブ・再開ダイアログというコア体験に集中する。
+6. **UIコンポーネント**: デザインシステム（`project/components/`）には進捗バー・入力フォームに相当する仕様が無いため、新規コンポーネントとして追加するのではなく、既存の意味トークン（`house-*`）と `GrimoireCard` 相当のスタイルを使ってローカルに実装する。
+
+### QuizSession（エンティティ・集約ルート）
+
+```ts
+type QuizSessionProps = {
+  studentId: StudentId;
+  learningUnitId: string;
+  totalQuestions: number;
+  currentIndex: number;
+};
+
+class QuizSession {
+  static start(studentId: StudentId, learningUnitId: string, totalQuestions: number): QuizSession; // currentIndex=0。totalQuestions<=0なら例外
+  static reconstruct(props: QuizSessionProps): QuizSession; // 永続化データを信頼し、再検証しない
+  readonly studentId: StudentId;
+  readonly learningUnitId: string;
+  readonly totalQuestions: number;
+  get currentIndex(): number;
+  get isComplete(): boolean; // currentIndex >= totalQuestions
+  get progressRatio(): number; // currentIndex / totalQuestions
+  advance(): void; // currentIndexを1つ進める。完了済みなら例外
+}
+```
+
+- **不変条件**:
+  1. `start()` は `totalQuestions <= 0` の場合に例外を投げる。
+  2. `advance()` は、既に `isComplete` が `true`（＝`currentIndex >= totalQuestions`）の場合に例外を投げ、状態を変更しない。
+  3. `advance()` が成功するたびに `currentIndex` がちょうど1増える。
+
+### AnswerCorrectnessPolicy（仕様）
+
+```ts
+interface AnswerCorrectnessPolicy {
+  isSatisfiedBy(submittedAnswer: string, correctAnswer: string): boolean;
+}
+
+const answerCorrectnessPolicy: AnswerCorrectnessPolicy = {
+  isSatisfiedBy: (submittedAnswer, correctAnswer) => submittedAnswer.trim() === correctAnswer.trim(),
+};
+```
+
+### QuizSessionRepository（インターフェース）
+
+```ts
+interface QuizSessionRepository {
+  find(studentId: StudentId, learningUnitId: string): Promise<QuizSession | null>;
+  save(session: QuizSession): Promise<void>;
+  delete(studentId: StudentId, learningUnitId: string): Promise<void>;
+}
+```
+
+具象実装 `FirebaseQuizSessionRepository`（`infrastructure/firebase/`）。Firestoreの `quizSessions/{studentId}/units/{learningUnitId}` サブコレクションに `{ totalQuestions, currentIndex }` の形で永続化する。他の per-student コレクションと同じ `request.auth.uid == studentId` ルールで保護する。「1回解ききるまで保持し、解ききったらリセット」は、完了時にこのドキュメントを `delete()` することで表現する（次回開始時は `find()` が `null` を返すため、新規セッションとして扱われる）。
+
+### ユースケース
+
+```ts
+class FindQuizSession {
+  constructor(quizSessionRepository: QuizSessionRepository);
+  execute(studentId: StudentId, learningUnitId: string): Promise<QuizSession | null>;
+}
+
+class StartQuiz {
+  constructor(quizSessionRepository: QuizSessionRepository);
+  // 既存セッションの有無に関わらず常にcurrentIndex=0の新しいセッションで上書きする
+  // （「最初からやり直す」も同じ呼び出しで表現する）。
+  execute(studentId: StudentId, learningUnitId: string, totalQuestions: number): Promise<QuizSession>;
+}
+
+class SubmitQuizAnswer {
+  constructor(
+    quizSessionRepository: QuizSessionRepository,
+    questionRepository: QuestionRepository,
+    cultivationProgressRepository: CultivationProgressRepository,
+    curriculumRepository: CurriculumRepository,
+    learningUnitRepository: LearningUnitRepository,
+  );
+  // 1. questionRepositoryからQuestionを取得しanswerCorrectnessPolicyで正誤判定
+  // 2. CultivationProgress.recordAttempt(learningUnitId, isCorrect)を呼ぶ
+  // 3. session.advance()。完了していなければセッションを保存（オートセーブ）
+  // 4. 完了していれば CultivationProgress.completeLearningUnit(curriculum, learningUnit) を呼び、セッションを削除（リセット）
+  execute(
+    studentId: StudentId,
+    learningUnitId: string,
+    questionId: string,
+    submittedAnswer: string,
+  ): Promise<{ isCorrect: boolean; session: QuizSession }>;
+}
+```
+
+`src/app/academy/page.tsx` に「テストを受ける」ボタンを新設（既存の読み取り専用の「問題を見る」とは別UI）。クリック時に `FindQuizSession` で中断データの有無を確認し、中断中であれば「続きから／最初からやり直す」ダイアログを表示する。無ければ `StartQuiz` で新規開始する。1問ごとに `SubmitQuizAnswer` を呼び、進捗バー・正誤フィードバック・完了時の結果画面を表示する。
 
 ## 値オブジェクト
 
@@ -490,6 +592,19 @@ interface CurriculumRepository {
 - [x] `subjectQuestionTypePolicy`: `Japanese` は `KanjiWriting`/`KanjiReading` の2形式でtrue
 - [x] `subjectQuestionTypePolicy`: Japanese以外の科目は `KanjiWriting` を含めどの形式もfalse
 
+### テスト受験フロー（第9回ヒアリング分）のテスト不変条件 — 実装・テスト済み
+
+- [x] `QuizSession.start` は `currentIndex=0` で生成される
+- [x] `QuizSession.start` は `totalQuestions <= 0` のとき例外を投げる
+- [x] `QuizSession.advance()` は `currentIndex` を1つ進める
+- [x] `QuizSession.advance()` は `isComplete` が `true` になった時点で以後の呼び出しに例外を投げる
+- [x] `QuizSession.reconstruct` は永続化された `currentIndex` を再検証せずそのまま信頼する
+- [x] `answerCorrectnessPolicy`: 前後の空白以外が完全一致する場合のみtrue
+- [x] `SubmitQuizAnswer`: 正誤判定の結果に関わらず `recordAttempt` を呼び、該当単元の `UnderstandingLevel` を更新する
+- [x] `SubmitQuizAnswer`: セッションが完了していなければ `QuizSession` を保存（オートセーブ）し、`CultivationProgress` は削除しない
+- [x] `SubmitQuizAnswer`: 最終問題を解き終えると `completeLearningUnit`（能力成長）を呼び、`QuizSession` を削除（リセット）する
+- [x] `SubmitQuizAnswer`: 存在しない `questionId` や、アクティブな `QuizSession` が無い場合は例外を投げる
+
 ## スコープ外（残課題。本追記には含まない）
 
 1. **`CultivationProgressRepository`（永続化）**: ドメイン層設計時点では未設計だったが、動作確認用システム構築時にインメモリ実装込みで用意した（`tasklist.md` 参照）。具象実装 `FirebaseCultivationProgressRepository` を実装済み。Firestoreの `cultivationProgress/{studentId}` コレクションに `{ grade, abilities, understandingLevels, currentDailyMission, currentMockExamMission }` の形で永続化する。復元時は `CultivationProgress.reconstruct` を使う（詳細は `tasklist.md` 7番参照）。
@@ -502,5 +617,7 @@ interface CurriculumRepository {
 8. **大学受験（最終ゴール）**: 「シックスグレードの先にあるゴール」という位置づけのみで、型やExamTypeとしては未着手。ヒアリングの結果、今回も不要と判断し見送った（第1回ヒアリングの結論を再確認）。
 9. **問題文・単語リスト・正解などのコンテンツ本体**: `QuestionType` はあくまで「出題形式の種類」という構造情報のみ。実際の単語リスト・本文・和訳/英訳の正解例などのコンテンツ本体は、`CLAUDE.md` の方針通りFirestoreに格納する想定。→ 第7回ヒアリングで`Question`エンティティとして実装済み（下記参照）。第8回ヒアリングで国語の漢字小テストI（書き56件・読み56件）を追加済み。現状は数学の2ユニット・国語の2ユニットに実データあり。
 10. **English以外の科目のQuestionType**: `SubjectQuestionTypePolicy` は当初 `English` のみ対応表を持っていた。他科目に出題形式を追加する場合は、改めてヒアリングのうえ `QUESTION_TYPES_BY_SUBJECT` に追加する。→ 第6回ヒアリングで `Math`（`Calculation`/`WordProblem`）、第8回ヒアリングで `Japanese`（`KanjiWriting`/`KanjiReading`）を追加済み（下記参照）。`Science`/`SocialStudies` は引き続き未対応。
+11. **テスト受験フローの対象範囲**: `QuizSession` によるテスト受験フローは、第9回ヒアリングの結果、現時点では「漢字小テストI」の2ユニットのみを対象とする。他のQuestionTypeを持つユニット（数学の計算問題・文章題等）への展開は、同じ仕組みをそのまま流用できるが今回は未着手。
+12. **学習ユニット一覧の「進行中」バッジ表示**: 中断中のテストに「進行中40%」のようなバッジを表示するアイデアは、第9回ヒアリングの結果、今回は不要と判断し見送った（任意の改善として後回し）。
 
 これらは `tasklist.md` に別タスクとして追加する。

@@ -9,8 +9,10 @@ import { FirebaseCultivationProgressRepository } from "@/contexts/mana-cultivati
 import { FirebaseCurriculumRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCurriculumRepository";
 import { FirebaseLearningUnitRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseLearningUnitRepository";
 import { FirebaseQuestionRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseQuestionRepository";
+import { FirebaseQuizSessionRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseQuizSessionRepository";
 import { FirebaseUpcomingExamRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseUpcomingExamRepository";
 import { CompleteLearningUnit } from "@/contexts/mana-cultivation/usecase/CompleteLearningUnit/CompleteLearningUnit";
+import { FindQuizSession } from "@/contexts/mana-cultivation/usecase/FindQuizSession/FindQuizSession";
 import { GenerateDailyMission } from "@/contexts/mana-cultivation/usecase/GenerateDailyMission/GenerateDailyMission";
 import type { CultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
 import { GetCultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
@@ -18,6 +20,8 @@ import { GetQuestionsForLearningUnit } from "@/contexts/mana-cultivation/usecase
 import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferMockExamMission/OfferMockExamMission";
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
 import { StartCultivation } from "@/contexts/mana-cultivation/usecase/StartCultivation/StartCultivation";
+import { StartQuiz } from "@/contexts/mana-cultivation/usecase/StartQuiz/StartQuiz";
+import { SubmitQuizAnswer } from "@/contexts/mana-cultivation/usecase/SubmitQuizAnswer/SubmitQuizAnswer";
 import {
   signIn as firebaseSignIn,
   signOutUser as firebaseSignOut,
@@ -32,6 +36,7 @@ const learningUnitRepository = new FirebaseLearningUnitRepository();
 const upcomingExamRepository = new FirebaseUpcomingExamRepository();
 const cultivationProgressRepository = new FirebaseCultivationProgressRepository();
 const questionRepository = new FirebaseQuestionRepository();
+const quizSessionRepository = new FirebaseQuizSessionRepository();
 
 const enrollStudent = new EnrollStudent(studentRepository);
 const startCultivation = new StartCultivation(cultivationProgressRepository);
@@ -50,6 +55,15 @@ const getCultivationOverview = new GetCultivationOverview(
   upcomingExamRepository,
 );
 const getQuestionsForLearningUnit = new GetQuestionsForLearningUnit(questionRepository);
+const findQuizSession = new FindQuizSession(quizSessionRepository);
+const startQuiz = new StartQuiz(quizSessionRepository);
+const submitQuizAnswer = new SubmitQuizAnswer(
+  quizSessionRepository,
+  questionRepository,
+  cultivationProgressRepository,
+  curriculumRepository,
+  learningUnitRepository,
+);
 
 function currentStudentId(authUid: string | null): StudentId {
   if (!authUid) {
@@ -66,6 +80,24 @@ export type QuestionView = {
   prompt: string;
   answer: string;
 };
+
+export type QuizSessionView = {
+  learningUnitId: string;
+  totalQuestions: number;
+  currentIndex: number;
+  isComplete: boolean;
+  progressRatio: number;
+};
+
+function toQuizSessionView(session: { learningUnitId: string; totalQuestions: number; currentIndex: number; isComplete: boolean; progressRatio: number }): QuizSessionView {
+  return {
+    learningUnitId: session.learningUnitId,
+    totalQuestions: session.totalQuestions,
+    currentIndex: session.currentIndex,
+    isComplete: session.isComplete,
+    progressRatio: session.progressRatio,
+  };
+}
 
 type AcademyState = {
   authUid: string | null;
@@ -86,6 +118,13 @@ type AcademyState = {
   assignDailyMission: () => Promise<void>;
   offerMockExam: () => Promise<void>;
   fetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
+  checkQuizSession: (learningUnitId: string) => Promise<QuizSessionView | null>;
+  startQuizSession: (learningUnitId: string, totalQuestions: number) => Promise<QuizSessionView>;
+  submitQuizAnswerFor: (
+    learningUnitId: string,
+    questionId: string,
+    submittedAnswer: string,
+  ) => Promise<{ isCorrect: boolean; session: QuizSessionView }>;
 };
 
 export const useAcademyStore = create<AcademyState>((set, get) => ({
@@ -217,10 +256,31 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
   fetchQuestions: async (learningUnitId) => {
     const questions = await getQuestionsForLearningUnit.execute(learningUnitId);
-    return questions.map((question) => ({
-      id: question.id,
-      prompt: question.prompt,
-      answer: question.answer,
-    }));
+    return questions
+      .map((question) => ({
+        id: question.id,
+        prompt: question.prompt,
+        answer: question.answer,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  },
+
+  checkQuizSession: async (learningUnitId) => {
+    const studentId = currentStudentId(get().authUid);
+    const session = await findQuizSession.execute(studentId, learningUnitId);
+    return session ? toQuizSessionView(session) : null;
+  },
+
+  startQuizSession: async (learningUnitId, totalQuestions) => {
+    const studentId = currentStudentId(get().authUid);
+    const session = await startQuiz.execute(studentId, learningUnitId, totalQuestions);
+    return toQuizSessionView(session);
+  },
+
+  submitQuizAnswerFor: async (learningUnitId, questionId, submittedAnswer) => {
+    const studentId = currentStudentId(get().authUid);
+    const result = await submitQuizAnswer.execute(studentId, learningUnitId, questionId, submittedAnswer);
+    await get().refreshOverview();
+    return { isCorrect: result.isCorrect, session: toQuizSessionView(result.session) };
   },
 }));

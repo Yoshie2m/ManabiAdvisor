@@ -57,6 +57,9 @@
 | **問題の正誤記録（recordAttempt）** | ドメイン操作 | `CultivationProgress` が、解答した `LearningUnit` のIDと正誤を受け取り、該当単元の `UnderstandingLevel` のみを更新するふるまい。`completeLearningUnit`（能力成長）とは独立した別操作。 | `CultivationProgress.recordAttempt()` |
 | **デイリーミッション付与（assignDailyMission）** | ドメイン操作 | `CultivationProgress` が、`UpcomingExam`（出題範囲）と `FocusUnitSelectionPolicy` を使って理解度最低の1単元を選び、`type="Daily"` の `Mission` を生成して保持するふるまい。 | `CultivationProgress.assignDailyMission()` |
 | **モック模試ミッション提示（offerMockExamMission）** | ドメイン操作 | `CultivationProgress` が、`UpcomingExam` の出題範囲全体を対象とする `type="MockExam"` の `Mission` を生成して保持するふるまい。生徒はこのミッションを選択して挑戦できる。 | `CultivationProgress.offerMockExamMission()` |
+| **QuizSession（テスト受験セッション）** | エンティティ（集約ルート） | ある生徒（`StudentId`）がある `LearningUnit` のテストに挑戦している最中の中断可能な進捗を表す。`totalQuestions`（全問題数）・`currentIndex`（次に解答する問題の0始まりの位置）を持ち、`advance()` で1問分進む（完了済みなら例外）。`CultivationProgress` とは別の集約として独立させた（第9回ヒアリング）。 | `domain/models/QuizSession.ts` |
+| **AnswerCorrectnessPolicy（解答正誤判定ポリシー）** | 仕様（ポリシー） | 生徒が入力した解答と正解を、前後の空白のみ許容した完全一致で判定する純粋なドメインルール。 | `domain/specs/AnswerCorrectnessPolicy.ts` |
+| **テスト受験フロー（SubmitQuizAnswer）** | ユースケース | 1問ごとの解答を受け取り、`AnswerCorrectnessPolicy`で正誤判定→`recordAttempt`（理解度記録）→`QuizSession.advance()`→オートセーブ、という一連の処理を行う。最終問題の解答で `QuizSession` が完了した場合は `completeLearningUnit`（能力成長）を呼んだ上で `QuizSession` を削除する（＝「1回解ききるまで保持し、解ききったらリセット」。第9回ヒアリング）。 | `usecase/SubmitQuizAnswer/SubmitQuizAnswer.ts` |
 
 > **残課題**: `CultivationProgress` / `UpcomingExam` / `Mission` の永続化（リポジトリ）、およびアプリケーション層からのトリガー（ユースケース）は、ドメイン層の設計時点では含まれていなかったが、後続の「動作確認用システム」構築時にインメモリ実装込みで用意した（`tasklist.md` を参照）。一方、`Grade`（学年段階）の進級（例: セカンドグレード→サードグレード）を表す操作はまだ無く、`CultivationProgress.initiate` 時に確定した `Grade` は不変のまま。ヒアリングの結果、進級機能は今回は不要と判断し見送った（対応グレードのコンテンツ整備を優先する、`tasklist.md` 参照）。
 

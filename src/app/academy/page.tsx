@@ -15,7 +15,7 @@ import type {
   CultivationOverview,
   LearningUnitView,
 } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
-import { useAcademyStore, type QuestionView } from "@/stores/useAcademyStore";
+import { useAcademyStore, type QuestionView, type QuizSessionView } from "@/stores/useAcademyStore";
 
 const SUBJECT_LABEL: Record<Subject, string> = {
   English: "英語",
@@ -99,6 +99,241 @@ const WEAK_UNDERSTANDING_THRESHOLD = 60;
 
 type Tab = "hall" | "library" | "tower";
 
+// カタカナの連続区間を強調表示する（「漢字（書き）」の直すべき箇所）。
+// highlightWhole=trueの場合は文全体を強調する（「漢字（読み）」は熟語そのものが問題文のため）。
+function HighlightedPrompt({
+  text,
+  lang,
+  highlightWhole = false,
+}: {
+  text: string;
+  lang?: string;
+  highlightWhole?: boolean;
+}) {
+  if (highlightWhole) {
+    return (
+      <p className="text-lg" lang={lang}>
+        <strong className="rounded bg-house-accent/20 px-1 font-semibold text-house-accent">{text}</strong>
+      </p>
+    );
+  }
+
+  const parts = text.split(/([゠-ヿー]+)/g);
+  return (
+    <p className="text-lg" lang={lang}>
+      {parts.map((part, index) =>
+        part && /^[゠-ヿー]+$/.test(part) ? (
+          <strong key={index} className="rounded bg-house-accent/20 px-1 font-semibold text-house-accent">
+            {part}
+          </strong>
+        ) : (
+          <span key={index}>{part}</span>
+        ),
+      )}
+    </p>
+  );
+}
+
+type QuizPhase = "loading" | "resume-dialog" | "in-progress" | "finished";
+
+function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: () => void }) {
+  const fetchQuestions = useAcademyStore((state) => state.fetchQuestions);
+  const checkQuizSession = useAcademyStore((state) => state.checkQuizSession);
+  const startQuizSession = useAcademyStore((state) => state.startQuizSession);
+  const submitQuizAnswerFor = useAcademyStore((state) => state.submitQuizAnswerFor);
+
+  const [phase, setPhase] = useState<QuizPhase>("loading");
+  const [questions, setQuestions] = useState<QuestionView[]>([]);
+  const [session, setSession] = useState<QuizSessionView | null>(null);
+  const [displayedIndex, setDisplayedIndex] = useState(0);
+  const [inputValue, setInputValue] = useState("");
+  const [feedback, setFeedback] = useState<{ isCorrect: boolean; correctAnswer: string } | null>(null);
+  const [resultCount, setResultCount] = useState({ correct: 0, total: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const fetchedQuestions = await fetchQuestions(unit.id);
+      const existing = await checkQuizSession(unit.id);
+      if (cancelled) return;
+
+      setQuestions(fetchedQuestions);
+      if (existing && !existing.isComplete) {
+        setSession(existing);
+        setDisplayedIndex(existing.currentIndex);
+        setPhase("resume-dialog");
+      } else {
+        const started = await startQuizSession(unit.id, fetchedQuestions.length);
+        if (cancelled) return;
+        setSession(started);
+        setDisplayedIndex(0);
+        setPhase("in-progress");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // 初回マウント時のみ実行する（unit.idは固定）。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unit.id]);
+
+  async function restartFromBeginning() {
+    const started = await startQuizSession(unit.id, questions.length);
+    setSession(started);
+    setDisplayedIndex(0);
+    setPhase("in-progress");
+  }
+
+  async function submitAnswer() {
+    const question = questions[displayedIndex];
+    const { isCorrect, session: nextSession } = await submitQuizAnswerFor(unit.id, question.id, inputValue);
+    setFeedback({ isCorrect, correctAnswer: question.answer });
+    setResultCount((prev) => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
+    setSession(nextSession);
+  }
+
+  function goToNext() {
+    if (!session) return;
+    setFeedback(null);
+    setInputValue("");
+    if (session.isComplete) {
+      setPhase("finished");
+    } else {
+      setDisplayedIndex(session.currentIndex);
+    }
+  }
+
+  if (phase === "loading" || !session) {
+    return <p className="text-xs opacity-70">読込中…</p>;
+  }
+
+  if (phase === "resume-dialog") {
+    return (
+      <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+        <p>前回の続き（{session.currentIndex + 1}問目）から再開しますか？</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPhase("in-progress")}
+            className="rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            続きから
+          </button>
+          <button
+            type="button"
+            onClick={() => void restartFromBeginning()}
+            className="rounded-md border border-house-primary/60 px-3 py-1.5 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            最初からやり直す
+          </button>
+          <button type="button" onClick={onClose} className="ml-auto text-xs opacity-70 hover:opacity-100">
+            閉じる
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "finished") {
+    return (
+      <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+        <p className="font-display text-lg font-semibold">
+          結果: {resultCount.correct} / {resultCount.total} 問正解
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+        >
+          閉じる
+        </button>
+      </div>
+    );
+  }
+
+  const question = questions[displayedIndex];
+  const preset = QUIZ_CARD_PRESET_BY_QUESTION_TYPE[unit.questionType as QuestionType];
+  const progressPercent = Math.round((displayedIndex / session.totalQuestions) * 100);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="テストを閉じる"
+          className="text-xs opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+        >
+          ◀ 戻る
+        </button>
+        <span className="tabular-nums text-xs text-house-primary">
+          {Math.min(displayedIndex + 1, session.totalQuestions)} / {session.totalQuestions}問
+        </span>
+      </div>
+
+      <div
+        role="progressbar"
+        aria-valuenow={progressPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-2 w-full overflow-hidden rounded-full bg-house-primary/20"
+      >
+        <div
+          className="h-full rounded-full bg-house-accent transition-[width] motion-reduce:transition-none"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      <p className="text-xs opacity-85">{preset.instruction}</p>
+      <HighlightedPrompt
+        text={question.prompt}
+        lang={preset.promptLang}
+        highlightWhole={unit.questionType === "KanjiReading"}
+      />
+
+      {!feedback ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitAnswer();
+          }}
+          className="flex flex-col gap-2"
+        >
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(event) => setInputValue(event.target.value)}
+            lang={preset.answerLang}
+            autoFocus
+            className="rounded-md border border-house-primary/60 bg-transparent px-3 py-2 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+            placeholder="答えを入力"
+          />
+          <button
+            type="submit"
+            disabled={inputValue.trim().length === 0}
+            className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+          >
+            答える
+          </button>
+        </form>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <p className={feedback.isCorrect ? "font-semibold text-house-accent" : "font-semibold opacity-85"}>
+            {feedback.isCorrect ? "○ 正解！" : `✕ 不正解（正解: ${feedback.correctAnswer}）`}
+          </p>
+          <button
+            type="button"
+            onClick={goToNext}
+            className="self-start rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+          >
+            次へ
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LearningUnitRow({
   unit,
   onRecordAttempt,
@@ -112,6 +347,7 @@ function LearningUnitRow({
 }) {
   const [questions, setQuestions] = useState<QuestionView[] | null>(null);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [isTakingQuiz, setIsTakingQuiz] = useState(false);
 
   async function toggleQuestions() {
     if (questions) {
@@ -150,6 +386,15 @@ function LearningUnitRow({
           {unit.questionType && (
             <button
               type="button"
+              onClick={() => setIsTakingQuiz((prev) => !prev)}
+              className="rounded-md bg-house-accent px-2 py-1 text-xs font-semibold text-house-bg hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+            >
+              {isTakingQuiz ? "テストを閉じる" : "テストを受ける"}
+            </button>
+          )}
+          {unit.questionType && (
+            <button
+              type="button"
               onClick={() => void toggleQuestions()}
               disabled={isLoadingQuestions}
               className="rounded-md border border-house-primary/60 px-2 py-1 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
@@ -180,6 +425,12 @@ function LearningUnitRow({
           </button>
         </div>
       </div>
+
+      {isTakingQuiz && unit.questionType && (
+        <div className="border-t border-house-primary/20 pt-3">
+          <QuizTakingPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
+        </div>
+      )}
 
       {questions && unit.questionType && (
         <div className="flex flex-col gap-3 border-t border-house-primary/20 pt-3">
