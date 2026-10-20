@@ -280,3 +280,17 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/app/academy/page.tsx` の `QuizTakingPanel` を全面改修: 正誤判定を`answerCorrectnessPolicy`でクライアント側即時実行（通信待ちゼロ）、結果は`useRef`で端末内に蓄積、最終問題到達時または「◀ 戻る」クリック時にのみ`syncQuizProgressFor`でまとめて同期。二重タップガードもネットワーク非依存の同期的な`ref`ガードに変更
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第11回ヒアリング節、`SubmitQuizAnswer`→`SyncQuizProgress`への置き換えとして型定義を更新）を更新
 - [x] `npx tsc --noEmit` / `npm test`（29ファイル・127テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 20. 学園案内コンテキスト（漢字「書き」のセルフ採点・5問セット化）✅実装済み
+
+漢字の「書き」テストは手書きで確認するため解答欄に入力させる方式が不向きで、かつ56〜77問を一度に進めるのはユーザビリティが低いとユーザーから画面構成案のペーストを受けてヒアリング。`specs/mana-cultivation.md` の「意思決定の経緯（第12回ヒアリング）」節を参照。対象は`KanjiWriting`のみ、`KanjiReading`等は19番で実装したテキスト入力＋全問一括のフローを維持。
+
+- [x] `usecase/RecordQuizAttempts/RecordQuizAttempts.ts` を新規作成（「もう一度この5問」「間違えた問題だけやり直す」用。`recordAttempt`のみ行い`QuizSession`には触れない）＋テスト
+- [x] `src/stores/useAcademyStore.ts` に `recordQuizAttemptsFor` アクションを追加
+- [x] `src/app/academy/page.tsx`: クイズ起動処理（全問先読み・中断セッション確認・新規開始）を`useQuizBootstrap`フックに抽出し、`QuizTakingPanel`（テキスト入力式）と新設の`SelfGradedQuizPanel`（`KanjiWriting`専用）で共有
+- [x] `SelfGradedQuizPanel` を新規作成: 「正解を見る」→自己採点（正解/不正解）の2ステップ、5問（`SELF_GRADED_SET_SIZE`）ごとに`syncQuizProgressFor`でまとめて同期、セット完了時に`SetReviewList`（正誤一覧）付きの結果画面を表示
+- [x] 結果画面に「次の5問に進む」「間違えた問題だけをやり直す」「もう一度この5問を解く」「テスト選択へ戻る」を実装。後者2つのやり直しは`recordQuizAttemptsFor`のみを呼び、本来の出題進捗（`QuizSession`）には影響させない
+- [x] `LearningUnitRow` で `unit.questionType === "KanjiWriting"` のとき `SelfGradedQuizPanel` を、それ以外は従来の `QuizTakingPanel` を表示するよう分岐
+- [x] リファクタに伴うESLintエラー（エフェクト内での同期的setState）を修正し、二重タップ・同期失敗時のガード（`finally`でのref解除、送信中のボタン無効化）を追加
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第12回ヒアリング節）を更新
+- [x] `npx tsc --noEmit` / `npm test`（30ファイル・129テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認

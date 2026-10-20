@@ -19,6 +19,7 @@ import { GetCultivationOverview } from "@/contexts/mana-cultivation/usecase/GetC
 import { GetQuestionsForLearningUnit } from "@/contexts/mana-cultivation/usecase/GetQuestionsForLearningUnit/GetQuestionsForLearningUnit";
 import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferMockExamMission/OfferMockExamMission";
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
+import { RecordQuizAttempts } from "@/contexts/mana-cultivation/usecase/RecordQuizAttempts/RecordQuizAttempts";
 import { StartCultivation } from "@/contexts/mana-cultivation/usecase/StartCultivation/StartCultivation";
 import { StartQuiz } from "@/contexts/mana-cultivation/usecase/StartQuiz/StartQuiz";
 import type { QuizAnswerResult } from "@/contexts/mana-cultivation/usecase/SyncQuizProgress/SyncQuizProgress";
@@ -64,6 +65,7 @@ const syncQuizProgress = new SyncQuizProgress(
   curriculumRepository,
   learningUnitRepository,
 );
+const recordQuizAttempts = new RecordQuizAttempts(cultivationProgressRepository);
 
 function currentStudentId(authUid: string | null): StudentId {
   if (!authUid) {
@@ -125,6 +127,7 @@ type AcademyState = {
     results: QuizAnswerResult[],
     totalQuestions: number,
   ) => Promise<QuizSessionView | null>;
+  recordQuizAttemptsFor: (learningUnitId: string, results: QuizAnswerResult[]) => Promise<void>;
 };
 
 export const useAcademyStore = create<AcademyState>((set, get) => ({
@@ -282,5 +285,11 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
     const result = await syncQuizProgress.execute(studentId, learningUnitId, results, totalQuestions);
     await get().refreshOverview();
     return result.session ? toQuizSessionView(result.session) : null;
+  },
+
+  recordQuizAttemptsFor: async (learningUnitId, results) => {
+    const studentId = currentStudentId(get().authUid);
+    await recordQuizAttempts.execute(studentId, learningUnitId, results);
+    await get().refreshOverview();
   },
 }));

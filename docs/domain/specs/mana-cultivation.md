@@ -247,6 +247,30 @@ class SyncQuizProgress {
 
 実際の型定義は上記「ユースケース」節の `SyncQuizProgress` を参照。
 
+## 意思決定の経緯（第12回ヒアリング: 漢字「書き」のセルフ採点・5問セット化）
+
+ユーザーから画面構成案のペーストを受け、実装前にユーザーへ確認し、以下の方針で合意済み:
+
+1. **対象範囲**: このセルフ採点形式（「正解を見る」→自分で正解・不正解を選ぶ）および5問セット化は `KanjiWriting`（漢字の書き）のみを対象とする。`KanjiReading`（読み）を含む他のQuestionTypeは、第11回ヒアリングで実装したテキスト入力＋自動採点・全問一括のフローを維持する（手書きで確認する「書き」はテキスト入力で正誤を機械判定できないための対応）。
+2. **入力方式**: 「書き」は解答欄を持たない。問題文（カタカナ部分を強調表示）→「正解を見る」ボタン→正解の漢字を表示→「正解（覚えた！）」／「不正解（もう一度）」の2ボタンで生徒自身が採点する。
+3. **5問セットとサーバー同期**: `SELF_GRADED_SET_SIZE = 5` 問を1セットとする。全問データ自体はテスト開始時に一括ダウンロード済み（第11回踏襲）のためセットごとの追加フェッチは発生しない。サーバーへの同期（`SyncQuizProgress`）は、1問ごとでも全体完了時でもなく、**5問セットの区切り**（最後の問題を採点した直後）に行う。既存の `QuizSession`/`SyncQuizProgress` は変更不要（`results` の長さが5件（最後のセットは端数）になるだけ）。
+4. **セット途中の中断**: 明示的に「◀ 戻る」で閉じた場合は、その時点までの未同期分（セット未満の件数）を`SyncQuizProgress`で同期する。ブラウザが予期せず閉じられた場合はセット途中の分が失われてよい（第11回ヒアリングの方針を踏襲）。
+5. **結果画面とボーナス周回**: セット完了ごとに結果画面（セット内の正誤一覧、`SetReviewList`）を表示する。「次の5問に進む」「間違えた問題だけをやり直す」「もう一度この5問を解く」「テスト選択へ戻る」を提供する。後者2つの「やり直し」は本来の出題進捗（`QuizSession.advance()`）には影響させず、理解度記録（`recordAttempt`）のみを追加で行う新しいユースケース `RecordQuizAttempts` を使う（＝ボーナス練習という位置づけ。やり直しのたびに`QuizSession.currentIndex`が余計に進んでしまう不具合を避けるため）。
+6. **演出**: デザインシステムに該当コンポーネントが無く、紙吹雪エフェクトや効果音は今回のスコープに含めない。`prefers-reduced-motion`を尊重する軽量なテキスト主体の演出に留める。
+
+### RecordQuizAttempts（ユースケース）
+
+```ts
+class RecordQuizAttempts {
+  constructor(cultivationProgressRepository: CultivationProgressRepository);
+  // resultsそれぞれについてCultivationProgress.recordAttemptを呼ぶのみ。
+  // QuizSessionには一切触れない（本来の出題進捗とは無関係なボーナス練習のため）。
+  execute(studentId: StudentId, learningUnitId: string, results: { isCorrect: boolean }[]): Promise<void>;
+}
+```
+
+`src/app/academy/page.tsx` に `SelfGradedQuizPanel`（`KanjiWriting`専用）を新設。`QuizTakingPanel`（テキスト入力式）とはクイズ起動処理（`useQuizBootstrap`フック、全問の先読み・中断セッション確認・新規開始を共通化）を共有しつつ、採点UI・同期タイミングは独立して実装する。`LearningUnitRow` は `unit.questionType === "KanjiWriting"` で表示するパネルを切り替える。
+
 ## 値オブジェクト
 
 ### ExamType
@@ -632,6 +656,12 @@ interface CurriculumRepository {
 - [x] `SyncQuizProgress`: 完了していなければ `QuizSession` を保存し、`CultivationProgress` は削除しない
 - [x] `SyncQuizProgress`: 全問完了すると `completeLearningUnit`（能力成長）を呼び、`QuizSession` を削除（リセット）する
 - [x] `SyncQuizProgress`: 生徒の `CultivationProgress` が存在しない場合は例外を投げる
+
+### 漢字「書き」のセルフ採点・5問セット化（第12回ヒアリング分）のテスト不変条件 — 実装・テスト済み
+
+- [x] `RecordQuizAttempts`: 複数件の `results` それぞれについて `recordAttempt` を呼び、該当単元の `UnderstandingLevel` をまとめて更新する
+- [x] `RecordQuizAttempts`: `QuizSession` には一切触れない（本来の出題進捗を変化させない）
+- [x] `RecordQuizAttempts`: 生徒の `CultivationProgress` が存在しない場合は例外を投げる
 
 ## スコープ外（残課題。本追記には含まない）
 
