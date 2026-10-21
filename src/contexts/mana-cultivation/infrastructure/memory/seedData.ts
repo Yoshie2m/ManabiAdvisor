@@ -744,6 +744,15 @@ export const questions: Question[] = [
     prompt: "1から9までの数字が1つずつ書かれた9枚のカードから1枚引くとき、引いたカードが3の倍数である確率を求めなさい。",
     answer: "1/3（9枚中3枚）",
   }),
+  // チャート式 体系数学2 代数編 例題100「樹形図の利用」（第6章 1: 場合の数）。
+  Question.create({
+    id: "q-math-word-3",
+    learningUnitId: "unit-math-word-1",
+    prompt:
+      "3けたの自然数のうち、各けたの数の和が6であるものは何個あるか答えなさい。ただし、各けたの数は自然数（1以上の整数）とする。",
+    answer:
+      "10個（百の位を1, 2, 3, 4の順に固定し、十の位を小さい順に樹形図で数える。一の位は 6－(百の位)－(十の位) で決まる。百の位が1なら4個、2なら3個、3なら2個、4なら1個。百の位が5以上だと十・一の位の最小の和1+1=2を足して7以上になるため不可）",
+  }),
   ...kanjiTest1WriteQuestions,
   ...kanjiTest1ReadQuestions,
   ...kanjiTest2WriteQuestions,
