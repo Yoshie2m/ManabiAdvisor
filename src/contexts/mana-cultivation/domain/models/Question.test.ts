@@ -29,6 +29,21 @@ describe("Question", () => {
     });
   });
 
+  describe("explanation", () => {
+    it("defaults to null when omitted", () => {
+      const question = Question.create({ id: "q1", learningUnitId: "unit-1", prompt: "3 + 4 =", answer: "7" });
+
+      expect(question.explanation).toBeNull();
+    });
+
+    it("keeps the explanation passed to create and reconstruct", () => {
+      const props = { id: "q1", learningUnitId: "unit-1", prompt: "3 + 4 =", answer: "7", explanation: "3に4を足す。" };
+
+      expect(Question.create(props).explanation).toBe("3に4を足す。");
+      expect(Question.reconstruct(props).explanation).toBe("3に4を足す。");
+    });
+  });
+
   describe("reconstruct", () => {
     it("restores fields without re-checking for empty prompt/answer", () => {
       const question = Question.reconstruct({

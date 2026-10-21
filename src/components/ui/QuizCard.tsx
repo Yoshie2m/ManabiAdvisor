@@ -218,7 +218,7 @@ export function QuizCard({
               </p>
             )}
 
-            {explanation && <p className="text-sm opacity-85">{explanation}</p>}
+            {explanation && <p className="whitespace-pre-line text-sm opacity-85">{explanation}</p>}
           </div>
         )}
 
