@@ -11,6 +11,7 @@ type QuestionDocument = {
   learningUnitId: string;
   prompt: string;
   answer: string;
+  explanation?: string | null;
 };
 
 function toQuestion(id: string, data: DocumentData): Question {
@@ -20,6 +21,7 @@ function toQuestion(id: string, data: DocumentData): Question {
     learningUnitId: document.learningUnitId,
     prompt: document.prompt,
     answer: document.answer,
+    explanation: document.explanation ?? undefined,
   });
 }
 

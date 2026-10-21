@@ -91,7 +91,7 @@
 ### Question（エンティティ）
 
 ```ts
-type QuestionProps = { id: string; learningUnitId: string; prompt: string; answer: string };
+type QuestionProps = { id: string; learningUnitId: string; prompt: string; answer: string; explanation?: string };
 
 class Question {
   static create(props: QuestionProps): Question; // prompt/answerが空文字なら例外
@@ -100,6 +100,7 @@ class Question {
   readonly learningUnitId: string;
   readonly prompt: string;
   readonly answer: string;
+  readonly explanation: string | null; // 正解に添える解説・考え方。採点対象外の表示用テキスト（省略時null）
 }
 ```
 

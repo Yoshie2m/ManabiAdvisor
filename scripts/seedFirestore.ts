@@ -62,6 +62,7 @@ async function main() {
       learningUnitId: question.learningUnitId,
       prompt: question.prompt,
       answer: question.answer,
+      explanation: question.explanation,
     });
   }
 

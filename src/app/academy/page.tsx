@@ -1470,6 +1470,7 @@ function LearningUnitRow({
                 {...QUIZ_CARD_PRESET_BY_QUESTION_TYPE[unit.questionType as QuestionType]}
                 prompt={question.prompt}
                 answer={question.answer}
+                explanation={question.explanation ?? undefined}
                 number={index + 1}
                 total={questions.length}
                 onGrade={(grade) => onRecordAttempt(unit.id, grade === "correct")}

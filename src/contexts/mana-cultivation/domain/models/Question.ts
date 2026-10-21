@@ -3,6 +3,8 @@ export type QuestionProps = {
   learningUnitId: string;
   prompt: string;
   answer: string;
+  // 省略可。正解に添える解説・考え方。採点には使わない表示用テキスト。
+  explanation?: string;
 };
 
 export class Question {
@@ -11,20 +13,21 @@ export class Question {
     readonly learningUnitId: string,
     readonly prompt: string,
     readonly answer: string,
+    readonly explanation: string | null,
   ) {}
 
-  static create({ id, learningUnitId, prompt, answer }: QuestionProps): Question {
+  static create({ id, learningUnitId, prompt, answer, explanation }: QuestionProps): Question {
     if (prompt.trim().length === 0) {
       throw new Error("Question.prompt must not be empty");
     }
     if (answer.trim().length === 0) {
       throw new Error("Question.answer must not be empty");
     }
-    return new Question(id, learningUnitId, prompt, answer);
+    return new Question(id, learningUnitId, prompt, answer, explanation ?? null);
   }
 
   // Trusts persisted invariants instead of re-checking for empty prompt/answer.
-  static reconstruct({ id, learningUnitId, prompt, answer }: QuestionProps): Question {
-    return new Question(id, learningUnitId, prompt, answer);
+  static reconstruct({ id, learningUnitId, prompt, answer, explanation }: QuestionProps): Question {
+    return new Question(id, learningUnitId, prompt, answer, explanation ?? null);
   }
 }
