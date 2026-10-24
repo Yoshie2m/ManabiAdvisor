@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
@@ -92,11 +93,38 @@ function AuthForm() {
 }
 
 export default function Home() {
-  const { authUid, isAuthLoading, house, isEnrolled, isLoading, error, enroll, signOutUser } = useAcademyStore();
+  const {
+    authUid,
+    isAuthLoading,
+    isStudentLoading,
+    house,
+    isEnrolled,
+    isLoading,
+    error,
+    enroll,
+    signOutUser,
+    hasLandingRedirectSettled,
+    settleLandingRedirect,
+  } = useAcademyStore();
+  const router = useRouter();
   const [grade, setGrade] = useState<Grade>(LAUNCHED_GRADES[0]);
   const [selectedHouse, setSelectedHouse] = useState<House | null>(null);
 
-  if (isAuthLoading) {
+  const isRedirectingToAcademy = !!authUid && isEnrolled && !hasLandingRedirectSettled;
+
+  useEffect(() => {
+    if (!authUid || isStudentLoading || hasLandingRedirectSettled) {
+      return;
+    }
+    // 入学済みなら修練場側のマウント時にsettleする（ここでsettleすると遷移完了前にカードが一瞬見える）
+    if (isEnrolled) {
+      router.replace("/academy");
+    } else {
+      settleLandingRedirect();
+    }
+  }, [authUid, isStudentLoading, isEnrolled, hasLandingRedirectSettled, settleLandingRedirect, router]);
+
+  if (isAuthLoading || isStudentLoading || isRedirectingToAcademy) {
     return (
       <ThemeProvider house="RegiusCardis">
         <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-house-bg p-8 text-house-text">

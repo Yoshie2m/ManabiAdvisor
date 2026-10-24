@@ -99,11 +99,15 @@ function toQuizSessionView(session: { learningUnitId: string; totalQuestions: nu
 type AcademyState = {
   authUid: string | null;
   isAuthLoading: boolean;
+  isStudentLoading: boolean;
   house: House | null;
   isEnrolled: boolean;
   overview: CultivationOverview | null;
   isLoading: boolean;
   error: string | null;
+  // 起動直後の1回だけ、入学済みなら鑑定画面から修練場へ自動遷移させる（戻るリンクで戻れるように）
+  hasLandingRedirectSettled: boolean;
+  settleLandingRedirect: () => void;
   initialize: () => void;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -127,11 +131,19 @@ type AcademyState = {
 export const useAcademyStore = create<AcademyState>((set, get) => ({
   authUid: null,
   isAuthLoading: true,
+  isStudentLoading: false,
   house: null,
   isEnrolled: false,
   overview: null,
   isLoading: false,
   error: null,
+  hasLandingRedirectSettled: false,
+
+  settleLandingRedirect: () => {
+    if (!get().hasLandingRedirectSettled) {
+      set({ hasLandingRedirectSettled: true });
+    }
+  },
 
   initialize: () => {
     if (hasInitialized) {
@@ -141,21 +153,29 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
     watchAuthState(async (user) => {
       if (!user) {
-        set({ authUid: null, isAuthLoading: false, house: null, isEnrolled: false, overview: null });
+        set({
+          authUid: null,
+          isAuthLoading: false,
+          isStudentLoading: false,
+          house: null,
+          isEnrolled: false,
+          overview: null,
+          hasLandingRedirectSettled: false,
+        });
         return;
       }
 
-      set({ authUid: user.uid, isAuthLoading: false, error: null });
+      set({ authUid: user.uid, isAuthLoading: false, isStudentLoading: true, error: null });
       try {
         const existing = await studentRepository.findById(StudentId.fromString(user.uid));
         if (existing) {
-          set({ house: existing.house, isEnrolled: true });
+          set({ house: existing.house, isEnrolled: true, isStudentLoading: false });
           await get().refreshOverview();
         } else {
-          set({ house: null, isEnrolled: false, overview: null });
+          set({ house: null, isEnrolled: false, overview: null, isStudentLoading: false });
         }
       } catch (error) {
-        set({ error: error instanceof Error ? error.message : String(error) });
+        set({ error: error instanceof Error ? error.message : String(error), isStudentLoading: false });
       }
     });
   },

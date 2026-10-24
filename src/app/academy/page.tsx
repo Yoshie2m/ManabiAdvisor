@@ -1777,8 +1777,11 @@ function TowerTab({
 export default function AcademyPage() {
   const {
     house,
+    isAuthLoading,
+    isStudentLoading,
     isEnrolled,
     overview,
+    settleLandingRedirect,
     refreshOverview,
     recordAttemptFor,
     assignDailyMission,
@@ -1791,10 +1794,24 @@ export default function AcademyPage() {
   const [towerFilter, setTowerFilter] = useState<Subject | "all">("all");
 
   useEffect(() => {
+    settleLandingRedirect();
+  }, [settleLandingRedirect]);
+
+  useEffect(() => {
     if (isEnrolled) {
       void refreshOverview();
     }
   }, [isEnrolled, refreshOverview]);
+
+  if (isAuthLoading || isStudentLoading || (isEnrolled && !overview)) {
+    return (
+      <ThemeProvider house={house ?? "RegiusCardis"}>
+        <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-house-bg p-8 text-house-text">
+          <p className="text-sm">読み込み中…</p>
+        </div>
+      </ThemeProvider>
+    );
+  }
 
   if (!isEnrolled || !overview) {
     return (
