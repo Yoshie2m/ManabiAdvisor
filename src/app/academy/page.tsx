@@ -76,7 +76,7 @@ const QUIZ_CARD_PRESET_BY_QUESTION_TYPE: Record<QuestionType, QuizCardPresetProp
   KanjiReading: {
     kind: "vocabulary",
     chapter: "Kanji · 読み",
-    instruction: "次の漢字の読みをひらがなで答えなさい。",
+    instruction: "次の漢字の読みを選びなさい。",
     promptLang: "ja",
     answerLang: "ja",
   },
@@ -396,11 +396,7 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
       </div>
 
       <p className="text-xs opacity-85">{preset.instruction}</p>
-      <HighlightedPrompt
-        text={question.prompt}
-        lang={preset.promptLang}
-        highlightWhole={unit.questionType === "KanjiReading"}
-      />
+      <HighlightedPrompt text={question.prompt} lang={preset.promptLang} />
 
       {!feedback ? (
         <form
@@ -919,12 +915,16 @@ function VocabularyChoiceStep({
   return (
     <>
       <p className="text-xs opacity-85">{preset.instruction}</p>
-      <p
-        className={questionType === "VocabularyTest" ? "font-display text-2xl font-semibold" : "whitespace-pre-line text-lg"}
-        lang={preset.promptLang}
-      >
-        {question.prompt}
-      </p>
+      {questionType === "KanjiReading" ? (
+        <HighlightedPrompt text={question.prompt} lang={preset.promptLang} highlightWhole />
+      ) : (
+        <p
+          className={questionType === "VocabularyTest" ? "font-display text-2xl font-semibold" : "whitespace-pre-line text-lg"}
+          lang={preset.promptLang}
+        >
+          {question.prompt}
+        </p>
+      )}
       <QuestionImage url={question.imageUrl} />
       <div className="flex flex-col gap-2">
         {choices.map((choice) => {
@@ -1491,7 +1491,9 @@ function LearningUnitRow({
         <div className="border-t border-house-primary/20 pt-3">
           {unit.questionType === "KanjiWriting" || unit.questionType === "OneQuestionOneAnswer" ? (
             <SelfGradedQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
-          ) : unit.questionType === "VocabularyTest" || unit.questionType === "MultipleChoice" ? (
+          ) : unit.questionType === "VocabularyTest" ||
+            unit.questionType === "MultipleChoice" ||
+            unit.questionType === "KanjiReading" ? (
             <MultipleChoiceQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
           ) : unit.questionType === "PassageTranslationToEnglish" ? (
             <WordOrderQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
