@@ -5,6 +5,8 @@ import { SUBJECTS } from "./Subject";
 import { Curriculum } from "./Curriculum";
 import { CultivationProgress } from "./CultivationProgress";
 import { LearningUnit } from "./LearningUnit";
+import { CharacterCard } from "./CharacterCard";
+import { GelCost } from "./GelCost";
 import { ManaGel } from "./ManaGel";
 import { Mission } from "./Mission";
 import { SubjectAbility } from "./SubjectAbility";
@@ -147,6 +149,65 @@ describe("CultivationProgress", () => {
     });
   });
 
+  describe("exchangeForCard", () => {
+    const card = CharacterCard.create({
+      id: "card-amou",
+      number: 1,
+      name: "天羽",
+      furigana: "アモウ",
+      title: "銀翼のキャプテン",
+      flavor: "「決めるまで走り続ける」",
+      rarity: 3,
+      attribute: "Math",
+      imageUrl: "/images/characters/amou-full.png",
+      cost: GelCost.create("Math", 3),
+    });
+
+    function progressWithMathGels(count: number) {
+      const progress = initiate();
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      for (let i = 1; i < count; i += 1) {
+        progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      }
+      return progress;
+    }
+
+    it("starts with no acquired cards", () => {
+      const progress = initiate();
+
+      expect(progress.hasAcquiredCard("card-amou")).toBe(false);
+      expect(progress.getAcquiredCardIds().size).toBe(0);
+    });
+
+    it("spends the card's subject gels and acquires the card", () => {
+      const progress = progressWithMathGels(5);
+
+      progress.exchangeForCard(card);
+
+      expect(progress.getManaGel("Math").count).toBe(2);
+      expect(progress.hasAcquiredCard("card-amou")).toBe(true);
+      for (const subject of SUBJECTS.filter((s) => s !== "Math")) {
+        expect(progress.getManaGel(subject).count).toBe(0);
+      }
+    });
+
+    it("throws and changes nothing when gels are not enough", () => {
+      const progress = progressWithMathGels(2);
+
+      expect(() => progress.exchangeForCard(card)).toThrow();
+      expect(progress.getManaGel("Math").count).toBe(2);
+      expect(progress.hasAcquiredCard("card-amou")).toBe(false);
+    });
+
+    it("throws and spends nothing when the card is already acquired", () => {
+      const progress = progressWithMathGels(6);
+      progress.exchangeForCard(card);
+
+      expect(() => progress.exchangeForCard(card)).toThrow();
+      expect(progress.getManaGel("Math").count).toBe(3);
+    });
+  });
+
   describe("assignDailyMission", () => {
     it("targets the weakest unit in the exam scope", () => {
       const progress = initiate();
@@ -281,6 +342,7 @@ describe("CultivationProgress", () => {
         currentDailyMission: dailyMission,
         currentMockExamMission: mockExamMission,
         manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, 7)])),
+        acquiredCardIds: new Set(["card-amou"]),
       });
 
       expect(progress.studentId).toBe(studentId);
@@ -290,6 +352,7 @@ describe("CultivationProgress", () => {
       expect(progress.getCurrentDailyMission()).toBe(dailyMission);
       expect(progress.getMockExamMission()).toBe(mockExamMission);
       expect(progress.getManaGel("Japanese").count).toBe(7);
+      expect(progress.hasAcquiredCard("card-amou")).toBe(true);
     });
 
     it("restores null missions as-is", () => {
@@ -302,6 +365,7 @@ describe("CultivationProgress", () => {
         currentDailyMission: null,
         currentMockExamMission: null,
         manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.none(subject)])),
+        acquiredCardIds: new Set(),
       });
 
       expect(progress.getCurrentDailyMission()).toBeNull();

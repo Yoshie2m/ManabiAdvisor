@@ -35,4 +35,19 @@ describe("ManaGel", () => {
   it.each([0, -1, 0.5])("add() rejects %s", (amount) => {
     expect(() => ManaGel.none("SocialStudies").add(amount)).toThrow();
   });
+
+  it("spend() returns a new ManaGel with fewer gels", () => {
+    const gel = ManaGel.create("Math", 30);
+
+    expect(gel.spend(30).count).toBe(0);
+    expect(gel.count).toBe(30);
+  });
+
+  it("spend() rejects spending more than owned", () => {
+    expect(() => ManaGel.create("Math", 29).spend(30)).toThrow();
+  });
+
+  it.each([0, -1, 0.5])("spend() rejects %s", (amount) => {
+    expect(() => ManaGel.create("Math", 10).spend(amount)).toThrow();
+  });
 });

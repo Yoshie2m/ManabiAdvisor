@@ -9,16 +9,22 @@ import { ChooseBuddy } from "@/contexts/house-assignment/usecase/ChooseBuddy/Cho
 import { EnrollStudent } from "@/contexts/house-assignment/usecase/EnrollStudent/EnrollStudent";
 import { GetTodaysBuddyCheer } from "@/contexts/house-assignment/usecase/GetTodaysBuddyCheer/GetTodaysBuddyCheer";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
+import { FirebaseCharacterCardRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCharacterCardRepository";
 import { FirebaseCultivationProgressRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCultivationProgressRepository";
 import { FirebaseCurriculumRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCurriculumRepository";
 import { FirebaseLearningUnitRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseLearningUnitRepository";
 import { FirebaseQuestionRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseQuestionRepository";
 import { FirebaseQuizSessionRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseQuizSessionRepository";
 import { FirebaseUpcomingExamRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseUpcomingExamRepository";
+import { ExchangeGelsForCard } from "@/contexts/mana-cultivation/usecase/ExchangeGelsForCard/ExchangeGelsForCard";
 import { FindQuizSession } from "@/contexts/mana-cultivation/usecase/FindQuizSession/FindQuizSession";
 import { GenerateDailyMission } from "@/contexts/mana-cultivation/usecase/GenerateDailyMission/GenerateDailyMission";
 import type { CultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
 import { GetCultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
+import {
+  GetCharacterCollection,
+  type CharacterCardView,
+} from "@/contexts/mana-cultivation/usecase/GetCharacterCollection/GetCharacterCollection";
 import { GetQuestionsForLearningUnit } from "@/contexts/mana-cultivation/usecase/GetQuestionsForLearningUnit/GetQuestionsForLearningUnit";
 import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferMockExamMission/OfferMockExamMission";
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
@@ -46,6 +52,9 @@ const quizSessionRepository = new FirebaseQuizSessionRepository();
 
 const enrollStudent = new EnrollStudent(studentRepository);
 const chooseBuddyUsecase = new ChooseBuddy(studentRepository);
+const characterCardRepository = new FirebaseCharacterCardRepository();
+const getCharacterCollection = new GetCharacterCollection(cultivationProgressRepository, characterCardRepository);
+const exchangeGelsForCard = new ExchangeGelsForCard(cultivationProgressRepository, characterCardRepository);
 const getTodaysBuddyCheer = new GetTodaysBuddyCheer(new FirebaseBuddyCheerRepository());
 const startCultivation = new StartCultivation(cultivationProgressRepository);
 const changeGradeUsecase = new ChangeGrade(cultivationProgressRepository);
@@ -129,6 +138,9 @@ type AcademyState = {
   buddy: Buddy | null;
   buddyCheer: string | null;
   chooseBuddy: (buddy: Buddy) => Promise<void>;
+  characterCollection: CharacterCardView[] | null;
+  refreshCharacterCollection: () => Promise<void>;
+  exchangeForCard: (cardId: string) => Promise<void>;
   refreshBuddyCheer: () => Promise<void>;
   changeGrade: (grade: Grade) => Promise<void>;
   refreshOverview: () => Promise<void>;
@@ -176,6 +188,7 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
           isAuthLoading: false,
           buddy: null,
           buddyCheer: null,
+          characterCollection: null,
           isStudentLoading: false,
           house: null,
           isEnrolled: false,
@@ -229,6 +242,24 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
   buddy: null,
   buddyCheer: null,
+  characterCollection: null,
+
+  refreshCharacterCollection: async () => {
+    const collection = await getCharacterCollection.execute(currentStudentId(get().authUid));
+    set({ characterCollection: collection });
+  },
+
+  exchangeForCard: async (cardId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await exchangeGelsForCard.execute(currentStudentId(get().authUid), cardId);
+      await Promise.all([get().refreshCharacterCollection(), get().refreshOverview()]);
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   chooseBuddy: async (buddy) => {
     set({ isLoading: true, error: null });

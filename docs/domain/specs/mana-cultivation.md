@@ -441,6 +441,80 @@ class RecordQuizAttempts {
 - 単元が渡したカリキュラムに属さない場合は例外を投げ、理解度もジェルも変わらない。
 - `ManaGel`の個数は0以上の整数。`add`は1以上の整数だけを受け付ける。
 
+## 意思決定の経緯（第20回ヒアリング: 秘宝の栞とキャラクターカードの交換）
+
+ユーザーから「修練場の一番右端に『秘宝の栞』タブを追加し、集めたカードのコレクション一覧を表示したい。タブのアイコンはデザインシステムの`treasure-bookmark.svg`、カードはデザインシステムの`CollectionCard`を使う」という依頼を受けた。実装前にユーザーへ4点を確認し、以下の方針で合意済み:
+
+1. **カードの種類**: まず全身イラストがある天羽・影島の2枚。イラストが増えたらカードを足す。レア度・肩書き・セリフなどはClaudeが案を作る（下記）。
+2. **獲得ルール**: 魔力ジェルを使って交換する。交換するとジェルは減る（第19回の「貯めて表示するだけ」だったジェルに使い道ができる）。
+3. **ステータス・スキル**: 載せない。名前・セリフ・獲得条件だけのカードにし、問題の解き方などには影響しない。
+4. **バディとの関係**: 関係しない。バディに選んでいるかどうかに関係なく、ジェルで交換して獲得する。
+
+**コンテキストの判断**: 交換はジェルを減らす操作なので、「ジェルは0個を下回らない」「同じカードは1度しか獲得できない」という不変条件を、ジェルを持つ`CultivationProgress`集約の中で同時に守る。そのため魔力修練コンテキストに置く。カードの中身（図鑑の文章・画像・必要なジェル）はコンテンツ本体なので、`CLAUDE.md`の方針どおりFirestore（`characterCards`コレクション）に格納する。
+
+### 追加・変更する型
+
+```ts
+// 値オブジェクト: 交換に必要なジェル
+class GelCost {
+  static create(subject: Subject, count: number): GelCost; // countが1以上の整数でなければ例外
+  readonly subject: Subject;
+  readonly count: number;
+}
+
+// エンティティ: キャラクターカード（図鑑の1ページの内容）
+class CharacterCard {
+  static create(props: {
+    id: string; number: number; name: string; furigana: string; title: string; flavor: string;
+    rarity: number;          // 0〜5の整数
+    attribute: Subject;      // 図鑑に出す教科のピクトグラム
+    imageUrl: string;        // 全身ドット絵
+    cost: GelCost;
+  }): CharacterCard; // 名前が空、numberが1以上の整数でない、rarityが0〜5の整数でなければ例外
+}
+
+// ManaGel（変更）
+class ManaGel {
+  spend(amount: number): ManaGel; // amountが1以上の整数でなければ例外。所持数を超えると例外
+}
+
+// CultivationProgress（変更）
+class CultivationProgress {
+  hasAcquiredCard(cardId: string): boolean;
+  getAcquiredCardIds(): ReadonlySet<string>;
+  exchangeForCard(card: CharacterCard): void; // 獲得済み・ジェル不足なら例外で状態不変。成功すればジェルを減らしてカードを獲得
+}
+```
+
+- ユースケース`GetCharacterCollection(studentId)`（全カードを図鑑番号順に、獲得済みかどうかと交換できるかどうかを添えて返す）と`ExchangeGelsForCard(studentId, cardId)`を追加する。
+- リポジトリ`CharacterCardRepository`（`findAll`／`findById`）を追加する。
+- `cultivationProgress`ドキュメントに`acquiredCardIds`を追加する（無ければ空として読む）。
+
+### カードの中身（案）
+
+| 図鑑No. | 名前 | 肩書き | レア度 | 属性 | 交換に必要なジェル | セリフ |
+| --- | --- | --- | --- | --- | --- | --- |
+| 001 | 天羽（アモウ） | 銀翼のキャプテン | ★★★ | 数学 | 数学のジェル30個 | 「一本のシュートも、一問の計算も、決めるまで走り続ける。それがキャプテンだ！」 |
+| 002 | 影島（カゲシマ） | 放課後のギタリスト | ★★★ | 英語 | 英語のジェル30個 | 「…歌詞の意味がわかると、音が変わるんだ。英語、ちょっとだけ好きになった」 |
+
+獲得条件の欄には「数学のジェルを30個使って交換する」のように、必要なジェルを書く。
+
+### インフラ・UI
+
+- `characterCards/{id}`コレクションを新設し、ルールは他のコンテンツと同じく読み取りのみ。
+- 修練場のタブの一番右端に「秘宝の栞」タブを追加する（アイコンは`treasure-bookmark.svg`）。
+- タブの中は、カードの一覧（図鑑番号・名前、未獲得は？？？とシルエット）と、選んだカードの`CollectionCard`表示。`CollectionCard`はデザインシステムの仕様どおり`src/components/ui/`にReactで実装し、ステータス・スキルの欄は出さない。
+- 未獲得のカードには、獲得条件の下に「交換する」ボタンを置く。ジェルが足りないときは押せず、あと何個必要かを表示する。
+
+### テストで守る不変条件
+
+- `ManaGel.spend`は所持数を超える量や0以下の量を拒否し、成功すれば所持数が減った新しい`ManaGel`を返す。
+- `exchangeForCard`は、成功すればカードの科目のジェルが必要数だけ減り、そのカードが獲得済みになる。他の科目のジェルは変わらない。
+- ジェルが足りなければ例外を投げ、ジェルも獲得状況も変わらない。
+- 獲得済みのカードをもう一度交換しようとすると例外を投げ、ジェルは減らない。
+- `CharacterCard.create`は空の名前、範囲外のレア度、1未満の図鑑番号を拒否する。`GelCost`は1未満の個数を拒否する。
+- `ExchangeGelsForCard`は交換後の進捗を保存し、カードや生徒が無ければ例外を投げる。
+
 ## 値オブジェクト
 
 ### ExamType

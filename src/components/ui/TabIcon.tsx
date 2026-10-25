@@ -2,6 +2,13 @@ export type TabIconName =
   | "great-hall"
   | "grimoire-library"
   | "phantom-tower"
+  | "treasure-bookmark"
+  | "ui-back"
+  | "ui-scroll"
+  | "ui-gift"
+  | "ui-zoom"
+  | "ui-backdrop"
+  | "ui-voice"
   | "kotodama"
   | "suhi"
   | "ikaigo"
@@ -36,6 +43,34 @@ const TAB_ICON_SHAPES: Record<TabIconName, string[]> = {
     "M5.5 12.5C7 12.3 8.5 12.5 9.5 13",
     "M5.5 15.5C7 15.3 8.5 15.5 9.5 16",
     "M16.5 9L18.5 12L16.5 15L14.5 12Z",
+  ],
+  "treasure-bookmark": [
+    "M7 3H17V21L12 16.5L7 21Z",
+    "M12 6L14.6 9.4L12 12.8L9.4 9.4Z",
+    "M9.4 9.4H14.6",
+    "M20 3V6.5",
+    "M18.25 4.75H21.75",
+  ],
+  "ui-back": ["M15 5L8 12L15 19"],
+  "ui-scroll": [
+    "M6 4H17V18C17 19.1 17.9 20 19 20H8C6.9 20 6 19.1 6 18Z",
+    "M17 4C18.1 4 19 4.9 19 6V8H17",
+    "M9 8H14",
+    "M9 11H14",
+    "M9 14H12",
+  ],
+  "ui-gift": [
+    "M4 9H20V13H4Z",
+    "M5 13V20H19V13",
+    "M12 9V20",
+    "M12 9C10.5 5.5 7 5 7 7.5C7 9 9.5 9 12 9C14.5 9 17 9 17 7.5C17 5 13.5 5.5 12 9",
+  ],
+  "ui-zoom": ["M10.5 4A6.5 6.5 0 1 1 10.49 4Z", "M15.5 15.5L20 20", "M10.5 7.5V13.5", "M7.5 10.5H13.5"],
+  "ui-backdrop": ["M4 5H20V19H4Z", "M4 16L9 11L13 15L16 12L20 16", "O15.5 8.5 1.3"],
+  "ui-voice": [
+    "M4 9H8L13 5V19L8 15H4Z",
+    "M16 9C17.5 10.5 17.5 13.5 16 15",
+    "M18.5 6.5C21.5 9.5 21.5 14.5 18.5 17.5",
   ],
   "phantom-tower": [
     "M2.5 21H21.5",

@@ -24,4 +24,14 @@ export class ManaGel {
     }
     return new ManaGel(this.subject, this.count + amount);
   }
+
+  spend(amount: number): ManaGel {
+    if (!Number.isInteger(amount) || amount < 1) {
+      throw new Error("ManaGel.spend amount must be a positive integer");
+    }
+    if (amount > this.count) {
+      throw new Error(`Not enough ${this.subject} gels: need ${amount}, have ${this.count}`);
+    }
+    return new ManaGel(this.subject, this.count - amount);
+  }
 }

@@ -4,6 +4,7 @@ import {
   type FocusUnitSelectionPolicy,
 } from "../specs/FocusUnitSelectionPolicy";
 import { LAUNCHED_GRADES } from "../specs/GradeExamTypePolicy";
+import type { CharacterCard } from "./CharacterCard";
 import type { Curriculum } from "./Curriculum";
 import type { Grade } from "./Grade";
 import type { LearningUnit } from "./LearningUnit";
@@ -18,6 +19,7 @@ const LEARNING_UNIT_COMPLETION_GAIN = 5;
 
 export class CultivationProgress {
   private readonly understandingLevels = new Map<string, UnderstandingLevel>();
+  private readonly acquiredCardIds = new Set<string>();
   private currentDailyMission: Mission | null = null;
   private currentMockExamMission: Mission | null = null;
 
@@ -60,6 +62,7 @@ export class CultivationProgress {
     currentDailyMission: Mission | null;
     currentMockExamMission: Mission | null;
     manaGels: ReadonlyMap<Subject, ManaGel>;
+    acquiredCardIds: ReadonlySet<string>;
   }): CultivationProgress {
     const progress = new CultivationProgress(
       params.studentId,
@@ -69,6 +72,9 @@ export class CultivationProgress {
     );
     for (const [learningUnitId, level] of params.understandingLevels) {
       progress.understandingLevels.set(learningUnitId, level);
+    }
+    for (const cardId of params.acquiredCardIds) {
+      progress.acquiredCardIds.add(cardId);
     }
     progress.currentDailyMission = params.currentDailyMission;
     progress.currentMockExamMission = params.currentMockExamMission;
@@ -106,6 +112,24 @@ export class CultivationProgress {
       throw new Error(`Unknown subject: ${subject}`);
     }
     return gel;
+  }
+
+  hasAcquiredCard(cardId: string): boolean {
+    return this.acquiredCardIds.has(cardId);
+  }
+
+  getAcquiredCardIds(): ReadonlySet<string> {
+    return this.acquiredCardIds;
+  }
+
+  // ジェルを使ってカードを獲得する。獲得済み・ジェル不足なら例外で、どちらの状態も変えない。
+  exchangeForCard(card: CharacterCard): void {
+    if (this.acquiredCardIds.has(card.id)) {
+      throw new Error(`Card already acquired: ${card.id}`);
+    }
+    const remaining = this.getManaGel(card.cost.subject).spend(card.cost.count);
+    this.manaGels.set(card.cost.subject, remaining);
+    this.acquiredCardIds.add(card.id);
   }
 
   // 正解なら、理解度の記録に加えてその単元の科目の魔力ジェルを1個増やす。

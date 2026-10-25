@@ -2,7 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Content master data (curricula/learningUnits/upcomingExams/questions/buddyCheers):
+    // Content master data (curricula/learningUnits/upcomingExams/questions/buddyCheers/characterCards):
     // readable by anyone, written only via the Admin SDK or console — there
     // is no client-side content authoring flow.
     match /curricula/{curriculumId} {
@@ -22,6 +22,10 @@ service cloud.firestore {
       allow write: if false;
     }
     match /buddyCheers/{cheerId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /characterCards/{cardId} {
       allow read: if true;
       allow write: if false;
     }

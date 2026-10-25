@@ -424,3 +424,19 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/stores/useAcademyStore.ts`・`src/app/page.tsx`（バディ選択）・`src/app/academy/page.tsx`（大広間の吹き出し）
 - [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（36ファイル・183テスト）
+
+## 31. 魔力修練コンテキスト（秘宝の栞とキャラクターカードの交換）✅実装済み
+
+ユーザーから「一番右端に『秘宝の栞』タブを追加し、集めたカードのコレクション一覧をデザインシステムのCollectionCardで表示したい」と依頼を受け、カードの種類・獲得ルール・ステータス/スキル・バディとの関係の4点をヒアリング。`specs/mana-cultivation.md`「意思決定の経緯（第20回ヒアリング）」節を参照。
+
+- [x] `domain/models/ManaGel.test.ts` → `ManaGel.ts`: `spend`
+- [x] `domain/models/GelCost.test.ts` → `GelCost.ts`、`domain/models/CharacterCard.test.ts` → `CharacterCard.ts`
+- [x] `domain/models/CultivationProgress.test.ts` → `CultivationProgress.ts`: `exchangeForCard`・`hasAcquiredCard`・`getAcquiredCardIds`、`reconstruct`に`acquiredCardIds`
+- [x] `domain/repositories/CharacterCardRepository.ts`、`usecase/GetCharacterCollection`・`usecase/ExchangeGelsForCard`（テスト込み）
+- [x] `infrastructure/firebase/FirebaseCultivationProgressRepository.ts`（`acquiredCardIds`）・`FirebaseCharacterCardRepository.ts`
+- [x] カード2枚を`infrastructure/memory/characterCardSeedData.ts`に用意し、`scripts/seedFirestore.ts`で投入。`firestore.rules`に`characterCards`（読み取りのみ）を追加
+- [x] デザインシステムの全身イラスト（PNG）・教室の背景（`public/images/magic-classroom.jpg`、図鑑の「背景切替」用）を取り込み、`TabIcon`に`treasure-bookmark`と図鑑用の`ui-*`ピクトグラムを追加、`TabBar`の右端に「秘宝の栞」を追加
+- [x] デザインシステムの`CollectionCard`を`src/components/ui/CollectionCard.tsx`に実装（ステータス・スキル欄なし）
+- [x] `src/stores/useAcademyStore.ts`・`src/app/academy/page.tsx`（一覧・カード表示・交換ボタン）
+- [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（40ファイル・211テスト）

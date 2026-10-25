@@ -92,3 +92,72 @@ body {
     transition: none;
   }
 }
+
+/* CollectionCard（図鑑）: デザインシステム bundle.css の ama-dex を移植。
+   メタ情報の色はレギウスが金（house-accent）、ローズがローズピンク（house-primary）。 */
+:root,
+[data-theme="regiuscardis"] {
+  --dex-meta: var(--house-accent);
+}
+
+[data-theme="rosesleep"] {
+  --dex-meta: var(--house-primary);
+}
+
+.dex-stage--classroom {
+  position: relative;
+  isolation: isolate;
+  background: var(--house-bg);
+}
+
+.dex-stage--classroom::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: url("/images/magic-classroom.jpg") center / cover no-repeat;
+  filter: saturate(0.7) contrast(1.05);
+}
+
+.dex-stage--classroom::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--house-bg) 80%, transparent) 0%,
+    color-mix(in srgb, var(--house-bg) 92%, transparent) 100%
+  );
+}
+
+[data-theme="rosesleep"] .dex-stage--classroom::before {
+  filter: blur(8px) saturate(0.85);
+  transform: scale(1.04);
+}
+
+[data-theme="rosesleep"] .dex-stage--classroom::after {
+  background: radial-gradient(
+    ellipse at 30% 20%,
+    color-mix(in srgb, var(--house-bg) 80%, transparent) 0%,
+    color-mix(in srgb, var(--house-bg) 92%, transparent) 100%
+  );
+}
+
+.dex-stage--house {
+  background: radial-gradient(
+    ellipse at 50% 70%,
+    color-mix(in srgb, var(--house-primary) 45%, var(--house-bg)) 0%,
+    var(--house-bg) 70%
+  );
+}
+
+.dex-stage--plain {
+  background: color-mix(in srgb, var(--house-text) 10%, var(--house-bg));
+}
+
+.dex-art--silhouette {
+  filter: brightness(0) drop-shadow(0 0 1px var(--house-text))
+    drop-shadow(0 0 6px color-mix(in srgb, var(--dex-meta) 50%, transparent));
+  opacity: 0.85;
+}

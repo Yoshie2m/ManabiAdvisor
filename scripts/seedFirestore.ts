@@ -2,6 +2,7 @@ import { getApps, initializeApp } from "firebase/app";
 import { doc, getFirestore, setDoc, Timestamp } from "firebase/firestore/lite";
 
 import { buddyCheers } from "../src/contexts/house-assignment/infrastructure/memory/buddyCheerSeedData";
+import { characterCards } from "../src/contexts/mana-cultivation/infrastructure/memory/characterCardSeedData";
 import {
   curricula,
   learningUnits,
@@ -10,7 +11,7 @@ import {
 } from "../src/contexts/mana-cultivation/infrastructure/memory/seedData";
 
 // One-off script to populate Firestore's curricula/learningUnits/upcomingExams/
-// questions collections, plus buddyCheers (house-assignment), from the demo content in infrastructure/memory/seedData.ts.
+// questions collections, plus buddyCheers (house-assignment) and characterCards, from the demo content in infrastructure/memory/seedData.ts.
 // Firestore's security rules deny client writes to these collections, so run
 // this only while firestore.rules temporarily allows writes to them (see the
 // TEMPORARY comment in firestore.rules), then revert and redeploy the rules.
@@ -76,8 +77,23 @@ async function main() {
     });
   }
 
+  for (const card of characterCards) {
+    await setDoc(doc(firestore, "characterCards", card.id), {
+      number: card.number,
+      name: card.name,
+      furigana: card.furigana,
+      title: card.title,
+      flavor: card.flavor,
+      rarity: card.rarity,
+      attribute: card.attribute,
+      imageUrl: card.imageUrl,
+      costSubject: card.cost.subject,
+      costCount: card.cost.count,
+    });
+  }
+
   console.log(
-    `Seeded ${buddyCheers.length} buddy cheers, ${curricula.length} curricula, ${learningUnits.length} learning units, ${upcomingExams.length} upcoming exams, ${questions.length} questions.`,
+    `Seeded ${characterCards.length} character cards, ${buddyCheers.length} buddy cheers, ${curricula.length} curricula, ${learningUnits.length} learning units, ${upcomingExams.length} upcoming exams, ${questions.length} questions.`,
   );
 }
 

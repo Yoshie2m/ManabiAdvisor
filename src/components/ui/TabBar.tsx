@@ -27,6 +27,7 @@ const DEFAULT_TABS: TabItem[] = [
   { id: "hall", label: "大広間", sublabel: "ホーム", icon: "great-hall" },
   { id: "library", label: "魔導書庫", sublabel: "教科えらび", icon: "grimoire-library" },
   { id: "tower", label: "幻影の塔", sublabel: "ニガテ撃破", icon: "phantom-tower" },
+  { id: "records", label: "秘宝の栞", sublabel: "記録", icon: "treasure-bookmark" },
 ];
 
 export function TabBar({

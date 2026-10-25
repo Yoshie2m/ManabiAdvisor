@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { BUDDY_PROFILE, BuddyPortrait } from "@/components/ui/BuddyPortrait";
+import { CollectionCard } from "@/components/ui/CollectionCard";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
 import { QuizCard, type QuizKind } from "@/components/ui/QuizCard";
 import { TabBar } from "@/components/ui/TabBar";
@@ -118,7 +119,7 @@ const GRADE_LABEL: Record<Grade, string> = {
 // 「ニガテの幻影」とみなす理解度のしきい値。一度も挑んでいない単元（attemptCount=0）は対象外。
 const WEAK_UNDERSTANDING_THRESHOLD = 60;
 
-type Tab = "hall" | "library" | "tower";
+type Tab = "hall" | "library" | "tower" | "records";
 
 // カタカナの連続区間を強調表示する（「漢字（書き）」の直すべき箇所）。
 // highlightWhole=trueの場合は文全体を強調する（「漢字（読み）」は熟語そのものが問題文のため）。
@@ -1785,6 +1786,107 @@ function LibraryTab({
   );
 }
 
+// 秘宝の栞: キャラクターカードの図鑑。未獲得のカードはジェルで交換できる（第20回ヒアリング）。
+function RecordsTab() {
+  const collection = useAcademyStore((state) => state.characterCollection);
+  const refreshCharacterCollection = useAcademyStore((state) => state.refreshCharacterCollection);
+  const exchangeForCard = useAcademyStore((state) => state.exchangeForCard);
+  const isLoading = useAcademyStore((state) => state.isLoading);
+  const error = useAcademyStore((state) => state.error);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void refreshCharacterCollection();
+  }, [refreshCharacterCollection]);
+
+  if (!collection) {
+    return <p className="text-sm opacity-80">読み込み中…</p>;
+  }
+
+  const selected = collection.find((card) => card.id === selectedId);
+  if (selected) {
+    const shortage = selected.costCount - selected.ownedGels;
+    return (
+      <CollectionCard
+        key={selected.id}
+        number={selected.number}
+        acquired={selected.acquired}
+        rarity={selected.rarity}
+        attribute={SUBJECT_ICON[selected.attribute]}
+        attributeLabel={SUBJECT_LABEL[selected.attribute]}
+        name={selected.name}
+        furigana={selected.furigana}
+        title={selected.title}
+        flavor={selected.flavor}
+        image={selected.imageUrl}
+        onBack={() => setSelectedId(null)}
+        acquire={
+          <div className="flex flex-col gap-2">
+            <p>
+              {SUBJECT_LABEL[selected.costSubject]}のジェルを{selected.costCount}個使って交換する。
+            </p>
+            {!selected.acquired && (
+              <>
+                <p className="text-xs opacity-85">
+                  いま {selected.ownedGels}個{shortage > 0 ? `（あと${shortage}個）` : ""}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void exchangeForCard(selected.id)}
+                  disabled={!selected.affordable || isLoading}
+                  className="rounded-md bg-house-primary px-3 py-2 text-sm font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+                >
+                  {isLoading ? "交換中…" : "交換する"}
+                </button>
+                {error && <p className="text-xs text-house-accent">{error}</p>}
+              </>
+            )}
+          </div>
+        }
+      />
+    );
+  }
+
+  return (
+    <GrimoireCard
+      title={
+        <span className="flex items-center gap-2">
+          <TabIcon name="treasure-bookmark" size={24} /> 秘宝の栞
+        </span>
+      }
+    >
+      <p className="mb-3 text-xs opacity-80">
+        獲得 {collection.filter((card) => card.acquired).length} / {collection.length}枚
+      </p>
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {collection.map((card) => (
+          <li key={card.id}>
+            <button
+              type="button"
+              onClick={() => setSelectedId(card.id)}
+              className="flex w-full flex-col items-center gap-1 rounded-md border border-house-primary/50 bg-house-text/5 p-2 text-xs hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={card.imageUrl}
+                alt=""
+                width={36 * 2}
+                height={70 * 2}
+                className={`[image-rendering:pixelated] ${card.acquired ? "" : "dex-art--silhouette"}`}
+              />
+              <span className="font-display tracking-[0.12em] opacity-80">No.{String(card.number).padStart(3, "0")}</span>
+              <span className="font-semibold">{card.acquired ? card.name : "？？？"}</span>
+              <span className={card.acquired ? "text-house-accent" : "opacity-70"}>
+                {card.acquired ? "獲得済" : card.affordable ? "交換できる" : "未獲得"}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </GrimoireCard>
+  );
+}
+
 function TowerTab({
   units,
   filter,
@@ -1983,6 +2085,8 @@ export default function AcademyPage() {
             onFetchQuestions={fetchQuestions}
           />
         )}
+
+        {tab === "records" && <RecordsTab />}
       </div>
     </ThemeProvider>
   );

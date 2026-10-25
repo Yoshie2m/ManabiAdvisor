@@ -28,6 +28,8 @@ type CultivationProgressDocument = {
   currentMockExamMission: MissionDocument | null;
   // 第19回ヒアリングで追加。それ以前のドキュメントには無いため、読み込み時は全科目0として扱う。
   manaGels?: Partial<Record<Subject, number>>;
+  // 第20回ヒアリングで追加。それ以前のドキュメントには無いため、読み込み時は空として扱う。
+  acquiredCardIds?: string[];
 };
 
 function toMission(document: MissionDocument | null): Mission | null {
@@ -66,6 +68,7 @@ export class FirebaseCultivationProgressRepository implements CultivationProgres
       currentDailyMission: toMission(data.currentDailyMission),
       currentMockExamMission: toMission(data.currentMockExamMission),
       manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, data.manaGels?.[subject] ?? 0)])),
+      acquiredCardIds: new Set(data.acquiredCardIds ?? []),
     });
   }
 
@@ -88,6 +91,7 @@ export class FirebaseCultivationProgressRepository implements CultivationProgres
       currentDailyMission: fromMission(progress.getCurrentDailyMission()),
       currentMockExamMission: fromMission(progress.getMockExamMission()),
       manaGels: Object.fromEntries(SUBJECTS.map((subject) => [subject, progress.getManaGel(subject).count])),
+      acquiredCardIds: [...progress.getAcquiredCardIds()],
     };
 
     await setDoc(doc(firestore, COLLECTION, progress.studentId.toString()), data);
