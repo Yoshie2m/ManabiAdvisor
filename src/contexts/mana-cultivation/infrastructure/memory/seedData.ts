@@ -3,6 +3,7 @@ import type { ExamType } from "../../domain/models/ExamType";
 import { LearningUnit } from "../../domain/models/LearningUnit";
 import { Question } from "../../domain/models/Question";
 import { UpcomingExam } from "../../domain/models/UpcomingExam";
+import { preSocialCurriculum, preSocialLearningUnits, preSocialQuestions } from "./preSocialSeedData";
 
 // 動作確認用の仮コンテンツ。本来はFirestoreのコレクション/Cloud Storageに格納する
 // （CLAUDE.md の学習コンテンツ配置方針を参照）。DB連携時にこのファイルは廃止する。
@@ -40,6 +41,7 @@ export const curricula: Curriculum[] = [
     subject: "SocialStudies",
     title: "中2社会 定期テスト対策",
   }),
+  preSocialCurriculum,
 ];
 
 // Lesson 2 Scene 1（感嘆文）の本文・文法ポイント。採点対象の問題ではなく、
@@ -368,6 +370,7 @@ export const learningUnits: LearningUnit[] = [
     { id: "unit-social-c4-s3", curriculumId: "curriculum-social", title: "第4章 近世の日本と世界 3: 幕藩体制の確立と鎖国", difficulty: 3 },
     "SocialStudies",
   ),
+  ...preSocialLearningUnits,
 ];
 
 export const upcomingExams: UpcomingExam[] = [
@@ -765,4 +768,5 @@ export const questions: Question[] = [
   ...kanjiTest2ReadQuestions,
   ...englishVocab1Questions,
   ...lesson2Scene1PracticeQuestions,
+  ...preSocialQuestions,
 ];

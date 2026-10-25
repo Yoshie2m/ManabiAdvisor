@@ -42,4 +42,18 @@ describe("subjectQuestionTypePolicy", () => {
       expect(subjectQuestionTypePolicy.isSatisfiedBy(subject, "KanjiWriting")).toBe(false);
     }
   });
+
+  it("allows MultipleChoice and OneQuestionOneAnswer for SocialStudies", () => {
+    for (const questionType of ["MultipleChoice", "OneQuestionOneAnswer"] as const) {
+      expect(subjectQuestionTypePolicy.isSatisfiedBy("SocialStudies", questionType)).toBe(true);
+    }
+  });
+
+  it("rejects the SocialStudies question types for other subjects", () => {
+    for (const subject of ["English", "Math", "Japanese", "Science"] as const) {
+      for (const questionType of ["MultipleChoice", "OneQuestionOneAnswer"] as const) {
+        expect(subjectQuestionTypePolicy.isSatisfiedBy(subject, questionType)).toBe(false);
+      }
+    }
+  });
 });

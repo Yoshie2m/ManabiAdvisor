@@ -12,6 +12,7 @@ type QuestionDocument = {
   prompt: string;
   answer: string;
   explanation?: string | null;
+  imageUrl?: string | null;
 };
 
 function toQuestion(id: string, data: DocumentData): Question {
@@ -22,6 +23,7 @@ function toQuestion(id: string, data: DocumentData): Question {
     prompt: document.prompt,
     answer: document.answer,
     explanation: document.explanation ?? undefined,
+    imageUrl: document.imageUrl ?? undefined,
   });
 }
 

@@ -52,6 +52,8 @@ const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
   WordProblem: "文章題",
   KanjiWriting: "漢字（書き）",
   KanjiReading: "漢字（読み）",
+  MultipleChoice: "4択",
+  OneQuestionOneAnswer: "一問一答",
 };
 
 // QuestionTypeごとのQuizCard表示設定。kindの既定文言では合わない組み合わせ
@@ -84,7 +86,31 @@ const QUIZ_CARD_PRESET_BY_QUESTION_TYPE: Record<QuestionType, QuizCardPresetProp
     promptLang: "ja",
     answerLang: "ja",
   },
+  MultipleChoice: {
+    kind: "vocabulary",
+    chapter: "4択",
+    instruction: "（　）に入る正しいものを選びなさい。",
+    promptLang: "ja",
+    answerLang: "ja",
+  },
+  OneQuestionOneAnswer: {
+    kind: "ja-translation",
+    chapter: "一問一答",
+    instruction: "答えを思いうかべてから「正解を見る」を押しなさい。",
+    promptLang: "ja",
+    answerLang: "ja",
+  },
 };
+
+function QuestionImage({ url }: { url: string | null }) {
+  if (!url) {
+    return null;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt="問題の図" className="max-h-64 w-auto self-start rounded-md border border-house-primary/30" />
+  );
+}
 
 const GRADE_LABEL: Record<Grade, string> = {
   Pre: "プレ期間（小6）",
@@ -435,23 +461,32 @@ type SetReviewItem = { question: QuestionView; isCorrect: boolean };
 type SelfGradedSubPhase = "question" | "set-result" | "bonus-round" | "unit-finished";
 
 function SelfGradedQuestionStep({
+  questionType,
   question,
   revealed,
   onReveal,
   onGrade,
   disabled = false,
 }: {
+  questionType: QuestionType;
   question: QuestionView;
   revealed: boolean;
   onReveal: () => void;
   onGrade: (isCorrect: boolean) => void;
   disabled?: boolean;
 }) {
-  const preset = QUIZ_CARD_PRESET_BY_QUESTION_TYPE.KanjiWriting;
+  const preset = QUIZ_CARD_PRESET_BY_QUESTION_TYPE[questionType];
   return (
     <>
       <p className="text-xs opacity-85">{preset.instruction}</p>
-      <HighlightedPrompt text={question.prompt} lang={preset.promptLang} />
+      {questionType === "KanjiWriting" ? (
+        <HighlightedPrompt text={question.prompt} lang={preset.promptLang} />
+      ) : (
+        <p className="whitespace-pre-line text-lg" lang={preset.promptLang}>
+          {question.prompt}
+        </p>
+      )}
+      <QuestionImage url={question.imageUrl} />
       {!revealed ? (
         <button
           type="button"
@@ -463,7 +498,10 @@ function SelfGradedQuestionStep({
         </button>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="font-display text-3xl font-semibold text-house-accent" lang="ja">
+          <p
+            className={`font-semibold text-house-accent ${question.answer.length > 20 ? "text-base" : "font-display text-3xl"}`}
+            lang="ja"
+          >
             {question.answer}
           </p>
           <div className="flex gap-2">
@@ -769,6 +807,7 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
           やり直し {quiz.bonusIndex + 1} / {quiz.bonusQueue.length}問
         </span>
         <SelfGradedQuestionStep
+          questionType={unit.questionType as QuestionType}
           question={bonusQuestion}
           revealed={bonusRevealed}
           onReveal={() => setBonusRevealed(true)}
@@ -843,6 +882,7 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
       </div>
 
       <SelfGradedQuestionStep
+        questionType={unit.questionType as QuestionType}
         question={question}
         revealed={revealed}
         onReveal={() => setRevealed(true)}
@@ -858,34 +898,40 @@ function SelfGradedQuizPanel({ unit, onClose }: { unit: LearningUnitView; onClos
 // 単語マスター（VocabularyTest）は訳語の表現ブレが大きく自由記述の自動採点に
 // 向かないため、4択（他の単語の訳を誤答選択肢として流用）で即時に自動採点する。
 function buildChoices(allQuestions: QuestionView[], correct: QuestionView, count = 4): string[] {
-  const distractorPool = allQuestions
-    .filter((q) => q.id !== correct.id && q.answer !== correct.answer)
-    .map((q) => q.answer);
+  const distractorPool = [
+    ...new Set(allQuestions.filter((q) => q.answer !== correct.answer).map((q) => q.answer)),
+  ];
   const shuffledPool = [...distractorPool].sort(() => Math.random() - 0.5);
   const distractors = shuffledPool.slice(0, count - 1);
   return [...distractors, correct.answer].sort(() => Math.random() - 0.5);
 }
 
 function VocabularyChoiceStep({
+  questionType,
   question,
   choices,
   selected,
   onSelect,
   disabled = false,
 }: {
+  questionType: QuestionType;
   question: QuestionView;
   choices: string[];
   selected: string | null;
   onSelect: (choice: string) => void;
   disabled?: boolean;
 }) {
-  const preset = QUIZ_CARD_PRESET_BY_QUESTION_TYPE.VocabularyTest;
+  const preset = QUIZ_CARD_PRESET_BY_QUESTION_TYPE[questionType];
   return (
     <>
       <p className="text-xs opacity-85">{preset.instruction}</p>
-      <p className="font-display text-2xl font-semibold" lang={preset.promptLang}>
+      <p
+        className={questionType === "VocabularyTest" ? "font-display text-2xl font-semibold" : "whitespace-pre-line text-lg"}
+        lang={preset.promptLang}
+      >
         {question.prompt}
       </p>
+      <QuestionImage url={question.imageUrl} />
       <div className="flex flex-col gap-2">
         {choices.map((choice) => {
           const isSelected = selected === choice;
@@ -968,6 +1014,7 @@ function MultipleChoiceQuizPanel({ unit, onClose }: { unit: LearningUnitView; on
           やり直し {quiz.bonusIndex + 1} / {quiz.bonusQueue.length}問
         </span>
         <VocabularyChoiceStep
+          questionType={unit.questionType as QuestionType}
           question={bonusQuestion}
           choices={bonusChoices}
           selected={bonusSelected}
@@ -1050,6 +1097,7 @@ function MultipleChoiceQuizPanel({ unit, onClose }: { unit: LearningUnitView; on
       </div>
 
       <VocabularyChoiceStep
+        questionType={unit.questionType as QuestionType}
         question={question}
         choices={choices}
         selected={selected}
@@ -1447,9 +1495,9 @@ function LearningUnitRow({
 
       {isTakingQuiz && unit.questionType && (
         <div className="border-t border-house-primary/20 pt-3">
-          {unit.questionType === "KanjiWriting" ? (
+          {unit.questionType === "KanjiWriting" || unit.questionType === "OneQuestionOneAnswer" ? (
             <SelfGradedQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
-          ) : unit.questionType === "VocabularyTest" ? (
+          ) : unit.questionType === "VocabularyTest" || unit.questionType === "MultipleChoice" ? (
             <MultipleChoiceQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />
           ) : unit.questionType === "PassageTranslationToEnglish" ? (
             <WordOrderQuizPanel unit={unit} onClose={() => setIsTakingQuiz(false)} />

@@ -63,6 +63,7 @@ async function main() {
       prompt: question.prompt,
       answer: question.answer,
       explanation: question.explanation,
+      imageUrl: question.imageUrl,
     });
   }
 

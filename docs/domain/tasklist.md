@@ -369,3 +369,18 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/app/page.tsx`: 「おかえりなさい」カードに学年ボタン（小6／中2）を追加し、現在の学年を選択状態にする
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第16回ヒアリング節）を更新
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（30ファイル・138テスト）
+
+## 27. 魔力修練コンテキスト（小6社会の4択・一問一答の追加）✅実装済み
+
+ユーザーから、小6社会の問題集「コンプリーション」9単元を「4択」と「一問一答」の2バリエーションで出題したいと依頼を受け、誤答の作り方・形式ごとの対象問題・解答の扱い・図つき問題の4点をヒアリング。`specs/mana-cultivation.md`「意思決定の経緯（第17回ヒアリング）」節を参照。
+
+- [x] `domain/specs/SubjectQuestionTypePolicy.test.ts`・`domain/models/LearningUnit.test.ts`: 社会に`MultipleChoice`・`OneQuestionOneAnswer`が付けられ、他科目には付けられないテストを先に書く
+- [x] `domain/models/QuestionType.ts`・`domain/specs/SubjectQuestionTypePolicy.ts`: 2形式を追加し、`SocialStudies`に対応させる
+- [x] `domain/models/Question.test.ts` → `Question.ts`: `imageUrl`（省略時null）を追加
+- [x] `FirebaseQuestionRepository.ts`・`scripts/seedFirestore.ts`・`useAcademyStore.ts`（`QuestionView`）: `imageUrl`の読み書き・受け渡しを追加
+- [x] 一時スクリプトで`content-workshop/output/pre-social-*/content.md`を読み、空欄が複数ある問題を空欄ごとに分けて`infrastructure/memory/preSocialSeedData.ts`を生成（カリキュラム1件・学習ユニット18件・問題564件＝4択264件＋一問一答300件）
+- [x] 切り出し画像10点を`public/images/pre-social/`へ配置
+- [x] `seedData.ts`から小6社会のデータを読み込む
+- [x] `src/app/academy/page.tsx`: `MultipleChoice`→4択画面、`OneQuestionOneAnswer`→セルフ採点画面に振り分け。両画面で`imageUrl`があれば画像を表示。画面の指示文を出題形式ごとに切り替え
+- [x] `npm run seed`でFirestoreへ再投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（30ファイル・145テスト）

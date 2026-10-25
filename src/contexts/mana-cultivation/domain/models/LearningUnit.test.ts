@@ -56,6 +56,23 @@ describe("LearningUnit", () => {
     expect(unit.difficulty).toBe(difficulty);
   });
 
+  it("creates SocialStudies units with the MultipleChoice and OneQuestionOneAnswer question types", () => {
+    for (const questionType of ["MultipleChoice", "OneQuestionOneAnswer"] as const) {
+      const unit = LearningUnit.create(
+        {
+          id: `unit-pre-social-01-${questionType}`,
+          curriculumId: "curriculum-pre-social",
+          title: "1 日本のすがた・地形図",
+          difficulty: 2,
+          questionType,
+        },
+        "SocialStudies",
+      );
+
+      expect(unit.questionType).toBe(questionType);
+    }
+  });
+
   it("throws for a difficulty outside the 1-5 range", () => {
     // Simulates data that bypassed the type system (e.g. corrupted persisted data).
     expect(() =>

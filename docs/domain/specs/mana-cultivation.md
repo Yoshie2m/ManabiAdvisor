@@ -91,7 +91,7 @@
 ### Question（エンティティ）
 
 ```ts
-type QuestionProps = { id: string; learningUnitId: string; prompt: string; answer: string; explanation?: string };
+type QuestionProps = { id: string; learningUnitId: string; prompt: string; answer: string; explanation?: string; imageUrl?: string };
 
 class Question {
   static create(props: QuestionProps): Question; // prompt/answerが空文字なら例外
@@ -101,6 +101,7 @@ class Question {
   readonly prompt: string;
   readonly answer: string;
   readonly explanation: string | null; // 正解に添える解説・考え方。採点対象外の表示用テキスト（省略時null）
+  readonly imageUrl: string | null; // 問題に添える図・写真のURL（省略時null。第17回ヒアリング）
 }
 ```
 
@@ -365,6 +366,39 @@ class RecordQuizAttempts {
 - `LAUNCHED_GRADES`に含まれない学年（例: `Third`）を指定すると例外を投げ、`grade`もミッションも変わらない。
 - `ChangeGrade`ユースケースは変更後の進捗を保存し、進捗が存在しなければ例外を投げる。
 
+## 意思決定の経緯（第17回ヒアリング: 小6社会の4択・一問一答の追加）
+
+ユーザーから、小6社会の問題集「コンプリーション」（`content-workshop/output/pre-social-01〜15`の9単元。写真から書き起こしたmd）をアプリに登録し、「選択での4択」と「一問一答で、次のページに解答が表示される」の2バリエーションで出題したいという依頼を受けた。社会にはまだ出題形式が無く（`SubjectQuestionTypePolicy`の対応表が空）、小6（`Elementary6thYearEntranceExam`）のカリキュラムも1件も無い。実装前にユーザーへ4点を確認し、以下の方針で合意済み:
+
+1. **4択の誤答**: 単語マスターと同じく、同じ単元の他の問題の解答から自動で3つ選ぶ（問題ごとに誤答データは持たない）。
+2. **形式ごとの対象問題**: 穴埋め（基本チェック・ガイド）は4択と一問一答の両方で出す。記述（記述力アップ）は選択肢を作れないため一問一答だけで出し、解答例を見て自己採点する。
+3. **解答の扱い**: 写真に解答が無く、mdの解答はClaudeが補ったもの（一部「要確認」）。確認を待たずにこのまま登録し、誤りが見つかったらmdとデータを直して再投入する。
+4. **図つき問題**: `Question`に任意の画像URLを追加し、切り出した画像を問題と一緒に表示する。画像は音声（第15回）と同じく`public/`への同梱を暫定運用とする（`CLAUDE.md`の本来方針はCloud Storage）。
+
+### 実装
+
+**ドメイン層の変更**:
+- `QuestionType`に`MultipleChoice`（4択）と`OneQuestionOneAnswer`（一問一答）を追加する。どちらも科目を問わない名前にするが、`SubjectQuestionTypePolicy`では当面`SocialStudies`だけに対応させる。
+- `Question`に`imageUrl: string | null`を追加する（`explanation`と同じ任意項目のパターン。`QuestionProps.imageUrl?: string`）。
+
+**コンテンツ構成**:
+- 小6社会のカリキュラム`curriculum-pre-social`（`Elementary6thYearEntranceExam`／`SocialStudies`）を新設する。
+- 9単元それぞれに、`MultipleChoice`と`OneQuestionOneAnswer`の`LearningUnit`を1つずつ作る（漢字の書き・読みと同じく、形式ごとに別の`LearningUnit`。計18件）。
+- 1つの穴埋めに空欄が複数ある問題（例:「（①）…（②）…」、方位の❶〜❻）は、空欄ごとに別の`Question`に分ける（4択で「①守護 ②地頭」のような複合解答が混ざると選択肢が不自然になるため）。
+- 問題データは`infrastructure/memory/preSocialSeedData.ts`に置き、`seedData.ts`から読み込んでFirestoreへ投入する。mdからTSへの変換には一時スクリプトを使い、リポジトリには残さない。
+- 画像は`public/images/pre-social/`に置く。
+
+**UI層**:
+- `MultipleChoice`は単語マスターの4択画面（`MultipleChoiceQuizPanel`）を使う。`OneQuestionOneAnswer`は漢字「書き」のセルフ採点画面（`SelfGradedQuizPanel`）を使う。
+- どちらの画面も、画像のある問題では問題文の下に画像を表示する。
+- 一問一答では、記述問題の解答例も同じ流れで「正解を見る」→自己採点とする。
+
+### テストで守る不変条件
+
+- `SubjectQuestionTypePolicy`は`SocialStudies`に`MultipleChoice`・`OneQuestionOneAnswer`を許可し、他の科目には許可しない（例: 英語に`MultipleChoice`は付けられない）。
+- `LearningUnit.create`は`SocialStudies`の単元に`MultipleChoice`・`OneQuestionOneAnswer`を付けられる。
+- `Question.create`/`reconstruct`は`imageUrl`を省略すると`null`になり、指定すればその値を保持する。
+
 ## 値オブジェクト
 
 ### ExamType
@@ -441,6 +475,9 @@ const QUESTION_TYPES = [
   "VocabularyTest",               // 単語テスト
   "PassageTranslationToJapanese", // 本文の和訳
   "PassageTranslationToEnglish",  // 英訳問題
+  // （数学・国語の4形式は第4回・第8回ヒアリングで追加）
+  "MultipleChoice",               // 4択（第17回ヒアリング。当面は社会のみ）
+  "OneQuestionOneAnswer",         // 一問一答（第17回ヒアリング。当面は社会のみ）
 ] as const;
 type QuestionType = (typeof QUESTION_TYPES)[number];
 function isQuestionType(value: string): value is QuestionType;

@@ -44,6 +44,27 @@ describe("Question", () => {
     });
   });
 
+  describe("imageUrl", () => {
+    it("defaults to null when omitted", () => {
+      const question = Question.create({ id: "q1", learningUnitId: "unit-1", prompt: "右の写真の機械は？", answer: "トラクター" });
+
+      expect(question.imageUrl).toBeNull();
+    });
+
+    it("keeps the imageUrl passed to create and reconstruct", () => {
+      const props = {
+        id: "q1",
+        learningUnitId: "unit-1",
+        prompt: "右の写真の機械は？",
+        answer: "トラクター",
+        imageUrl: "/images/pre-social/02-fig-01.jpg",
+      };
+
+      expect(Question.create(props).imageUrl).toBe("/images/pre-social/02-fig-01.jpg");
+      expect(Question.reconstruct(props).imageUrl).toBe("/images/pre-social/02-fig-01.jpg");
+    });
+  });
+
   describe("reconstruct", () => {
     it("restores fields without re-checking for empty prompt/answer", () => {
       const question = Question.reconstruct({
