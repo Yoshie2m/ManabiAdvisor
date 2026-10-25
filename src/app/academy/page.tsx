@@ -27,15 +27,6 @@ const SUBJECT_LABEL: Record<Subject, string> = {
   SocialStudies: "社会",
 };
 
-// 5つの魔導属性（教科の魔法名）。
-const SUBJECT_ELEMENT: Record<Subject, string> = {
-  Japanese: "言霊（ことだま）",
-  Math: "数秘（すうひ）",
-  English: "異界語（いかいご）",
-  Science: "錬金（れんきん）",
-  SocialStudies: "地誌・歴史（ちし・れきし）",
-};
-
 const SUBJECT_ICON: Record<Subject, TabIconName> = {
   Japanese: "kotodama",
   Math: "suhi",
@@ -1578,14 +1569,6 @@ function ExamCountdown({ scheduledDate }: { scheduledDate: Date }) {
   );
 }
 
-const SUBJECT_SHORT_NAME: Record<Subject, string> = {
-  Japanese: "言霊",
-  Math: "数秘",
-  English: "異界語",
-  Science: "錬金",
-  SocialStudies: "地誌・歴史",
-};
-
 // 科目ごとの魔力ジェルの所持数。瓶の画像・色はデザインシステムの Items / mana-gel-* トークン。
 function ManaGelShelf({ manaGels }: { manaGels: CultivationOverview["manaGels"] }) {
   return (
@@ -1605,10 +1588,7 @@ function ManaGelShelf({ manaGels }: { manaGels: CultivationOverview["manaGels"] 
             className="[image-rendering:pixelated]"
           />
           <span className="text-xs">
-            <span className="sr-only">{SUBJECT_SHORT_NAME[gel.subject]}のジェル</span>
-            <span aria-hidden="true" className="opacity-80">
-              {SUBJECT_SHORT_NAME[gel.subject]}
-            </span>{" "}
+            <span className="sr-only">{SUBJECT_LABEL[gel.subject]}のジェル</span>
             <span className="font-semibold tabular-nums">{gel.count}</span>
             <span className="sr-only">個</span>
           </span>
@@ -1651,7 +1631,7 @@ function HomeTab({
                 const unit = unitById.get(id);
                 return (
                   <p key={id} className="text-sm">
-                    {unit ? `${SUBJECT_ELEMENT[unit.subject]}の修練: 「${unit.title}」に挑め` : id}
+                    {unit ? `${SUBJECT_LABEL[unit.subject]}の修練: 「${unit.title}」に挑め` : id}
                   </p>
                 );
               })}
@@ -1721,9 +1701,8 @@ function LibraryTab({
             >
               <span className="flex items-center gap-2 text-house-accent">
                 <TabIcon name={SUBJECT_ICON[subject]} size={28} />
-                <span className="font-display font-semibold text-house-text">{SUBJECT_ELEMENT[subject]}</span>
+                <span className="font-semibold text-house-text">{SUBJECT_LABEL[subject]}</span>
               </span>
-              <span className="text-xs opacity-70">{SUBJECT_LABEL[subject]}</span>
             </button>
           ))}
         </div>
@@ -1752,7 +1731,7 @@ function LibraryTab({
         title={
           <span className="flex items-center gap-2">
             <TabIcon name={SUBJECT_ICON[selectedSubject]} size={24} />
-            {SUBJECT_ELEMENT[selectedSubject]}（{SUBJECT_LABEL[selectedSubject]}）
+            {SUBJECT_LABEL[selectedSubject]}
           </span>
         }
       >
@@ -1833,7 +1812,7 @@ function TowerTab({
                 }`}
               >
                 <span className="inline-flex items-center gap-1">
-                  <TabIcon name={SUBJECT_ICON[subject]} size={16} /> {SUBJECT_ELEMENT[subject]}
+                  <TabIcon name={SUBJECT_ICON[subject]} size={16} /> {SUBJECT_LABEL[subject]}
                 </span>
               </button>
             ))}
