@@ -407,3 +407,20 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/stores/useAcademyStore.ts`（ユースケースの組み立て）・`src/app/academy/page.tsx`（修練場の上部に5科目のジェルと所持数を表示）
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第19回ヒアリング節）を更新
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（31ファイル・161テスト）
+
+## 30. 学舎割当コンテキスト（バディの追加）✅実装済み
+
+ユーザーから「勉強を一緒に頑張るキャラクター（天羽・影島）を鑑定画面で選び、大広間に表示して日々応援メッセージを出したい」と依頼を受け、選ぶタイミング・フレーズ数・出し方・格納先の4点をヒアリング。`specs/house-assignment.md`「意思決定の経緯（第3回ヒアリング）」節を参照。
+
+- [x] `domain/models/Buddy.test.ts` → `Buddy.ts`: `Amou`／`Kageshima`、`isBuddy`
+- [x] `domain/models/StudentAggregate.test.ts` → `Student.ts`・`StudentAggregate.ts`: `buddy`（初期null）・`chooseBuddy`
+- [x] `domain/models/BuddyCheer.test.ts` → `BuddyCheer.ts`
+- [x] `domain/specs/DailyCheerPolicy.test.ts` → `DailyCheerPolicy.ts`: 日本時間の日付で決まる日替わり
+- [x] `domain/repositories/BuddyCheerRepository.ts`、`usecase/ChooseBuddy`・`usecase/GetTodaysBuddyCheer`（テスト込み）
+- [x] `infrastructure/firebase/FirebaseStudentRepository.ts`（`buddy`の読み書き）・`FirebaseBuddyCheerRepository.ts`
+- [x] 応援フレーズ60個（天羽30・影島30）を`infrastructure/memory/buddyCheerSeedData.ts`に用意し、`scripts/seedFirestore.ts`で投入
+- [x] `firestore.rules`に`buddyCheers`（読み取りのみ）を追加してデプロイ
+- [x] デザインシステムの胸像SVGを`public/images/characters/`へ配置（中身が`<rect>`だけでスクリプト・外部参照が無いことを確認済み）
+- [x] `src/stores/useAcademyStore.ts`・`src/app/page.tsx`（バディ選択）・`src/app/academy/page.tsx`（大広間の吹き出し）
+- [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（36ファイル・183テスト）

@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { BUDDY_PROFILE, BuddyPortrait } from "@/components/ui/BuddyPortrait";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
 import { QuizCard, type QuizKind } from "@/components/ui/QuizCard";
 import { TabBar } from "@/components/ui/TabBar";
 import { TabIcon, type TabIconName } from "@/components/ui/TabIcon";
+import type { Buddy } from "@/contexts/house-assignment/domain/models/Buddy";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import type { QuestionType } from "@/contexts/mana-cultivation/domain/models/QuestionType";
 import { SUBJECTS, type Subject } from "@/contexts/mana-cultivation/domain/models/Subject";
@@ -1598,19 +1600,44 @@ function ManaGelShelf({ manaGels }: { manaGels: CultivationOverview["manaGels"] 
   );
 }
 
+function BuddyCheerCard({ buddy, message }: { buddy: Buddy; message: string | null }) {
+  return (
+    <section
+      aria-label={`バディ ${BUDDY_PROFILE[buddy].name}`}
+      className="flex items-end gap-3 rounded-md border border-house-primary/40 bg-house-text/5 p-3"
+    >
+      <BuddyPortrait buddy={buddy} scale={3} />
+      <div className="flex flex-1 flex-col gap-1">
+        <p className="text-xs opacity-80">
+          {BUDDY_PROFILE[buddy].name}（{BUDDY_PROFILE[buddy].reading}）
+        </p>
+        <p className="rounded-md border border-house-primary/40 bg-house-bg px-3 py-2 text-sm leading-relaxed">
+          {message ?? "…"}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function HomeTab({
   overview,
   unitById,
   onAssignDaily,
   onOfferMock,
+  buddy,
+  buddyCheer,
 }: {
   overview: CultivationOverview;
   unitById: Map<string, LearningUnitView>;
   onAssignDaily: () => void;
   onOfferMock: () => void;
+  buddy: Buddy | null;
+  buddyCheer: string | null;
 }) {
   return (
     <div className="flex flex-col gap-6">
+      {buddy && <BuddyCheerCard buddy={buddy} message={buddyCheer} />}
+
       {overview.upcomingExam && (
         <GrimoireCard
           title={
@@ -1849,6 +1876,8 @@ export default function AcademyPage() {
     isEnrolled,
     overview,
     settleLandingRedirect,
+    buddy,
+    buddyCheer,
     refreshOverview,
     recordAttemptFor,
     assignDailyMission,
@@ -1930,6 +1959,8 @@ export default function AcademyPage() {
             unitById={unitById}
             onAssignDaily={() => void assignDailyMission()}
             onOfferMock={() => void offerMockExam()}
+            buddy={buddy}
+            buddyCheer={buddyCheer}
           />
         )}
 

@@ -1,6 +1,7 @@
 import { getApps, initializeApp } from "firebase/app";
 import { doc, getFirestore, setDoc, Timestamp } from "firebase/firestore/lite";
 
+import { buddyCheers } from "../src/contexts/house-assignment/infrastructure/memory/buddyCheerSeedData";
 import {
   curricula,
   learningUnits,
@@ -9,7 +10,7 @@ import {
 } from "../src/contexts/mana-cultivation/infrastructure/memory/seedData";
 
 // One-off script to populate Firestore's curricula/learningUnits/upcomingExams/
-// questions collections from the demo content in infrastructure/memory/seedData.ts.
+// questions collections, plus buddyCheers (house-assignment), from the demo content in infrastructure/memory/seedData.ts.
 // Firestore's security rules deny client writes to these collections, so run
 // this only while firestore.rules temporarily allows writes to them (see the
 // TEMPORARY comment in firestore.rules), then revert and redeploy the rules.
@@ -67,8 +68,16 @@ async function main() {
     });
   }
 
+  for (const cheer of buddyCheers) {
+    await setDoc(doc(firestore, "buddyCheers", cheer.id), {
+      buddy: cheer.buddy,
+      order: cheer.order,
+      message: cheer.message,
+    });
+  }
+
   console.log(
-    `Seeded ${curricula.length} curricula, ${learningUnits.length} learning units, ${upcomingExams.length} upcoming exams, ${questions.length} questions.`,
+    `Seeded ${buddyCheers.length} buddy cheers, ${curricula.length} curricula, ${learningUnits.length} learning units, ${upcomingExams.length} upcoming exams, ${questions.length} questions.`,
   );
 }
 

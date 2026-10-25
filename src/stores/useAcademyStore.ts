@@ -1,9 +1,13 @@
 import { create } from "zustand";
 
+import type { Buddy } from "@/contexts/house-assignment/domain/models/Buddy";
 import type { House } from "@/contexts/house-assignment/domain/models/House";
 import { StudentId } from "@/contexts/house-assignment/domain/models/StudentId";
+import { FirebaseBuddyCheerRepository } from "@/contexts/house-assignment/infrastructure/firebase/FirebaseBuddyCheerRepository";
 import { FirebaseStudentRepository } from "@/contexts/house-assignment/infrastructure/firebase/FirebaseStudentRepository";
+import { ChooseBuddy } from "@/contexts/house-assignment/usecase/ChooseBuddy/ChooseBuddy";
 import { EnrollStudent } from "@/contexts/house-assignment/usecase/EnrollStudent/EnrollStudent";
+import { GetTodaysBuddyCheer } from "@/contexts/house-assignment/usecase/GetTodaysBuddyCheer/GetTodaysBuddyCheer";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import { FirebaseCultivationProgressRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCultivationProgressRepository";
 import { FirebaseCurriculumRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseCurriculumRepository";
@@ -41,6 +45,8 @@ const questionRepository = new FirebaseQuestionRepository();
 const quizSessionRepository = new FirebaseQuizSessionRepository();
 
 const enrollStudent = new EnrollStudent(studentRepository);
+const chooseBuddyUsecase = new ChooseBuddy(studentRepository);
+const getTodaysBuddyCheer = new GetTodaysBuddyCheer(new FirebaseBuddyCheerRepository());
 const startCultivation = new StartCultivation(cultivationProgressRepository);
 const changeGradeUsecase = new ChangeGrade(cultivationProgressRepository);
 const recordAttempt = new RecordAttempt(cultivationProgressRepository, learningUnitRepository, curriculumRepository);
@@ -120,6 +126,10 @@ type AcademyState = {
   signIn: (email: string, password: string) => Promise<void>;
   signOutUser: () => Promise<void>;
   enroll: (house: House, grade: Grade) => Promise<void>;
+  buddy: Buddy | null;
+  buddyCheer: string | null;
+  chooseBuddy: (buddy: Buddy) => Promise<void>;
+  refreshBuddyCheer: () => Promise<void>;
   changeGrade: (grade: Grade) => Promise<void>;
   refreshOverview: () => Promise<void>;
   recordAttemptFor: (learningUnitId: string, isCorrect: boolean) => Promise<void>;
@@ -164,6 +174,8 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
         set({
           authUid: null,
           isAuthLoading: false,
+          buddy: null,
+          buddyCheer: null,
           isStudentLoading: false,
           house: null,
           isEnrolled: false,
@@ -177,10 +189,11 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
       try {
         const existing = await studentRepository.findById(StudentId.fromString(user.uid));
         if (existing) {
-          set({ house: existing.house, isEnrolled: true, isStudentLoading: false });
+          set({ house: existing.house, buddy: existing.buddy, isEnrolled: true, isStudentLoading: false });
+          void get().refreshBuddyCheer();
           await get().refreshOverview();
         } else {
-          set({ house: null, isEnrolled: false, overview: null, isStudentLoading: false });
+          set({ house: null, buddy: null, buddyCheer: null, isEnrolled: false, overview: null, isStudentLoading: false });
         }
       } catch (error) {
         set({ error: error instanceof Error ? error.message : String(error), isStudentLoading: false });
@@ -212,6 +225,32 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
 
   signOutUser: async () => {
     await firebaseSignOut();
+  },
+
+  buddy: null,
+  buddyCheer: null,
+
+  chooseBuddy: async (buddy) => {
+    set({ isLoading: true, error: null });
+    try {
+      await chooseBuddyUsecase.execute(currentStudentId(get().authUid), buddy);
+      set({ buddy });
+      await get().refreshBuddyCheer();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  refreshBuddyCheer: async () => {
+    const buddy = get().buddy;
+    if (!buddy) {
+      set({ buddyCheer: null });
+      return;
+    }
+    const cheer = await getTodaysBuddyCheer.execute(buddy, new Date());
+    set({ buddyCheer: cheer?.message ?? null });
   },
 
   enroll: async (house, grade) => {

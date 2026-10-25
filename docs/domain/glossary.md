@@ -22,6 +22,11 @@
 | **StudentAggregate（生徒集約）** | 集約ルート | `Student` エンティティをルートとする境界。生徒が選んだ学舎をそのまま確定させて生成する。 | `domain/models/StudentAggregate.ts` |
 | **StudentRepository（生徒リポジトリ）** | リポジトリ（インターフェース） | `StudentAggregate` の永続化を抽象化する境界。ID検索 (`findById`) と保存 (`save`) を提供。 | `domain/repositories/StudentRepository.ts` |
 | **EnrollStudent（入学ユースケース）** | ユースケース | 生徒ID・選んだ学舎を受け取り、生徒を選んだ学舎で確定させて保存するアプリケーションサービス。 | `usecase/EnrollStudent/EnrollStudent.ts` |
+| **Buddy（バディ）** | 値オブジェクト | 勉強を一緒に頑張るキャラクター。`Amou`（天羽／アモウ: サッカー部部長の元気な体育会系）または`Kageshima`（影島／カゲシマ: 根暗だがギターを練習している文化系）。生徒が鑑定画面でいつでも選び直せ、未選択（`null`）も可（第3回ヒアリング）。 | `domain/models/Buddy.ts` |
+| **BuddyCheer（応援フレーズ）** | エンティティ | バディが大広間で出す「頑張れ！」のメッセージ。バディごとに30個あり、日替わりで出す順番（`order`）を持つ。コンテンツ本体なのでFirestoreの`buddyCheers`に格納する。 | `domain/models/BuddyCheer.ts` |
+| **DailyCheerPolicy（日替わり応援ポリシー）** | 仕様（ポリシー） | その日（日本時間）に出す応援フレーズを1つ選ぶルール。同じ日は同じフレーズ、翌日は次のフレーズで、フレーズ数の日数で一巡する。 | `domain/specs/DailyCheerPolicy.ts` |
+| **ChooseBuddy（バディ選択ユースケース）** | ユースケース | 生徒が選んだバディを保存する。 | `usecase/ChooseBuddy/ChooseBuddy.ts` |
+| **GetTodaysBuddyCheer（今日の応援ユースケース）** | ユースケース | バディのフレーズを読み、`DailyCheerPolicy`でその日のフレーズを返す。 | `usecase/GetTodaysBuddyCheer/GetTodaysBuddyCheer.ts` |
 
 > **認証について**: ログイン・サインアップ（Firebase Authentication）自体は、どの境界づけられたコンテキストにも属さないビジネスルールを持たない技術的関心事として扱う。`src/lib/auth.ts` に薄いラッパーを置き、プレゼンテーション層（`useAcademyStore.ts` / `src/app/page.tsx`）がそこから得た `uid` を `StudentId` に変換してドメイン層・ユースケース層へ渡す。ドメイン層（`StudentId` 自体の型定義など）には一切変更を加えない。
 

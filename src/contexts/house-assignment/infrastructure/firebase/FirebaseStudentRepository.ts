@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore/lite";
 
 import { firestore } from "@/lib/firebase";
 
+import { isBuddy } from "../../domain/models/Buddy";
 import { isHouse } from "../../domain/models/House";
 import { StudentAggregate } from "../../domain/models/StudentAggregate";
 import type { StudentId } from "../../domain/models/StudentId";
@@ -11,6 +12,8 @@ const COLLECTION = "students";
 
 type StudentDocument = {
   house: string;
+  // バディ未選択、または第3回ヒアリング以前のドキュメントでは無い。
+  buddy?: string | null;
 };
 
 export class FirebaseStudentRepository implements StudentRepository {
@@ -24,11 +27,15 @@ export class FirebaseStudentRepository implements StudentRepository {
     if (!isHouse(data.house)) {
       throw new Error(`Invalid house in students/${id.toString()}: ${data.house}`);
     }
-    return StudentAggregate.create(id, data.house);
+    const buddy = data.buddy ?? null;
+    if (buddy !== null && !isBuddy(buddy)) {
+      throw new Error(`Invalid buddy in students/${id.toString()}: ${buddy}`);
+    }
+    return StudentAggregate.create(id, data.house, buddy);
   }
 
   async save(student: StudentAggregate): Promise<void> {
-    const data: StudentDocument = { house: student.house };
+    const data: StudentDocument = { house: student.house, buddy: student.buddy };
     await setDoc(doc(firestore, COLLECTION, student.id.toString()), data);
   }
 }

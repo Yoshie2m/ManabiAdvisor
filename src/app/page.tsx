@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { BUDDY_PROFILE, BuddyPortrait } from "@/components/ui/BuddyPortrait";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
 import { MagicalToggle } from "@/components/ui/MagicalToggle";
+import { BUDDIES } from "@/contexts/house-assignment/domain/models/Buddy";
 import { HOUSES, type House } from "@/contexts/house-assignment/domain/models/House";
 import type { Grade } from "@/contexts/mana-cultivation/domain/models/Grade";
 import { LAUNCHED_GRADES } from "@/contexts/mana-cultivation/domain/specs/GradeExamTypePolicy";
@@ -104,6 +106,8 @@ export default function Home() {
     error,
     enroll,
     changeGrade,
+    buddy,
+    chooseBuddy,
     signOutUser,
     hasLandingRedirectSettled,
     settleLandingRedirect,
@@ -182,6 +186,32 @@ export default function Home() {
                   ))}
                 </div>
                 {error && <p className="text-xs text-house-accent">{error}</p>}
+              </fieldset>
+
+              <fieldset className="flex flex-col gap-1 text-sm">
+                <legend className="mb-1">バディ（一緒に頑張る仲間）</legend>
+                <div className="flex gap-2">
+                  {BUDDIES.map((candidate) => (
+                    <button
+                      key={candidate}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => candidate !== buddy && void chooseBuddy(candidate)}
+                      aria-pressed={buddy === candidate}
+                      className={`flex flex-1 flex-col items-center gap-1 rounded-md border px-2 py-2 text-xs transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50 ${
+                        buddy === candidate
+                          ? "border-house-primary bg-house-primary/20"
+                          : "border-house-primary/50 bg-house-text/5 hover:opacity-80"
+                      }`}
+                    >
+                      <BuddyPortrait buddy={candidate} scale={2} />
+                      <span className="font-semibold">
+                        {BUDDY_PROFILE[candidate].name}（{BUDDY_PROFILE[candidate].reading}）
+                      </span>
+                      <span className="opacity-80">{BUDDY_PROFILE[candidate].description}</span>
+                    </button>
+                  ))}
+                </div>
               </fieldset>
 
               <Link
