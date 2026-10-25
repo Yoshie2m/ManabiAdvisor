@@ -341,6 +341,30 @@ class RecordQuizAttempts {
 - `LearningUnit.create`/`reconstruct`は`referenceAudioUrl`を省略した場合`null`になる。
 - `LearningUnit.create`は`referenceAudioUrl`と`referenceText`を同時に持つ組み合わせを許容する（例外を投げない）。
 
+## 意思決定の経緯（第16回ヒアリング: 入学後の学年段階の切り替え）
+
+ユーザーから「鑑定画面で小6か中2か選択できるようにしたい」という依頼を受けた。これまで`Grade`は入学時（`StartCultivation`）に一度だけ選び、`CultivationProgress.grade`として以後変更できなかった（「残課題」の進級操作が未着手だったのと同じ理由）。実装前にユーザーへ3点を確認し、以下の方針で合意済み:
+
+1. **使い方**: 選んだ学年を`CultivationProgress`に保存し、次回以降もその学年で修練場が開く（起動ごとに選ばせる方式ではない）。入学済みの生徒は起動時に`/`から`/academy`へ自動遷移する現在の動きはそのまま残し、切り替えたいときだけ鑑定画面（修練場の「← 鑑定画面」から戻った「おかえりなさい」カード）で選び直す。
+2. **能力値の扱い**: `SubjectAbility`は学年をまたいで科目ごとに1つのまま共通とする（学年ごとに分けない）。単元ごとの`UnderstandingLevel`は単元IDがキーなので、学年を切り替えても各単元の記録はそのまま残り、元の学年に戻せば再び見える。
+3. **ミッションの扱い**: 切り替え時に、現在のデイリーミッション・モック模試ミッションを取り消す（元の学年の試験の単元を指したまま新しい学年の修練場に出るのを防ぐ）。新しい学年で改めて受け取る。
+
+### 実装
+
+**ドメイン層の変更**: `CultivationProgress`に`changeGrade(grade: Grade): void`を追加し、`grade`を`readonly`フィールドから「読み取り専用のgetter＋集約内でのみ書き換え」に変える。切り替え先は`LAUNCHED_GRADES`（提供中の学年段階）に限定し、それ以外なら例外を投げて状態を変えない。現在と同じ学年を指定した場合は何もしない（ミッションも消さない）。
+
+**ユースケース層**: `ChangeGrade`ユースケース（`usecase/ChangeGrade/`）を新設。`CultivationProgressRepository`から読み込み→`changeGrade`→保存。進捗が存在しない（未入学）場合は例外。
+
+**UI層**: 鑑定画面の「おかえりなさい」カードに、`LAUNCHED_GRADES`の学年ボタン（小6／中2）を表示し、現在の学年を選択状態にする。別の学年を押すと`ChangeGrade`→`refreshOverview`を実行する。
+
+### テストで守る不変条件
+
+- `changeGrade`は`grade`を新しい値に更新し、`SubjectAbility`と`UnderstandingLevel`を一切変えない。
+- `changeGrade`で別の学年に変えると、デイリーミッション・モック模試ミッションはどちらも`null`になる。
+- 現在と同じ学年を指定した`changeGrade`は何も変えない（ミッションも残る）。
+- `LAUNCHED_GRADES`に含まれない学年（例: `Third`）を指定すると例外を投げ、`grade`もミッションも変わらない。
+- `ChangeGrade`ユースケースは変更後の進捗を保存し、進捗が存在しなければ例外を投げる。
+
 ## 値オブジェクト
 
 ### ExamType
@@ -618,7 +642,8 @@ const LEARNING_UNIT_COMPLETION_GAIN = 5;
 class CultivationProgress {
   static initiate(studentId: StudentId, grade: Grade): CultivationProgress; // 5科目すべてをlevel=0で初期化
   readonly studentId: StudentId; // 学舎割当コンテキストの StudentId を再利用（下記「設計判断」参照）
-  readonly grade: Grade; // 第3回ヒアリング分で追加。initiate時に確定し、以後変更する操作はまだ無い
+  get grade(): Grade; // 第3回ヒアリング分で追加。第16回ヒアリングでchangeGradeにより変更可能になった
+  changeGrade(grade: Grade): void; // LAUNCHED_GRADES以外は例外。別の学年へ変えるとミッション2種をnullにする。同じ学年なら何もしない
 
   // 能力成長（第1回ヒアリング分、変更なし）
   getAbility(subject: Subject): SubjectAbility;

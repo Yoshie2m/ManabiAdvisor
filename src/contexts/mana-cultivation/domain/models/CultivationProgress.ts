@@ -3,6 +3,7 @@ import {
   lowestUnderstandingRateFirstPolicy,
   type FocusUnitSelectionPolicy,
 } from "../specs/FocusUnitSelectionPolicy";
+import { LAUNCHED_GRADES } from "../specs/GradeExamTypePolicy";
 import type { Curriculum } from "./Curriculum";
 import type { Grade } from "./Grade";
 import type { LearningUnit } from "./LearningUnit";
@@ -21,9 +22,26 @@ export class CultivationProgress {
 
   private constructor(
     readonly studentId: StudentId,
-    readonly grade: Grade,
+    private currentGrade: Grade,
     private readonly abilities: Map<Subject, SubjectAbility>,
   ) {}
+
+  get grade(): Grade {
+    return this.currentGrade;
+  }
+
+  // 能力値・単元ごとの理解度は学年をまたいで残す。ミッションは元の学年の試験範囲を指すため取り消す。
+  changeGrade(grade: Grade): void {
+    if (!LAUNCHED_GRADES.includes(grade)) {
+      throw new Error(`Grade is not launched yet: ${grade}`);
+    }
+    if (grade === this.currentGrade) {
+      return;
+    }
+    this.currentGrade = grade;
+    this.currentDailyMission = null;
+    this.currentMockExamMission = null;
+  }
 
   static initiate(studentId: StudentId, grade: Grade): CultivationProgress {
     const abilities = new Map(SUBJECTS.map((subject) => [subject, SubjectAbility.initial(subject)]));

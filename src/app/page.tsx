@@ -99,9 +99,11 @@ export default function Home() {
     isStudentLoading,
     house,
     isEnrolled,
+    overview,
     isLoading,
     error,
     enroll,
+    changeGrade,
     signOutUser,
     hasLandingRedirectSettled,
     settleLandingRedirect,
@@ -158,6 +160,29 @@ export default function Home() {
               <p className="text-sm">
                 配属学舎: <span className="font-display text-house-primary">{HOUSE_LABEL[house]}</span>
               </p>
+
+              <fieldset className="flex flex-col gap-1 text-sm">
+                <legend className="mb-1">学年段階</legend>
+                <div className="flex gap-2">
+                  {LAUNCHED_GRADES.map((candidate) => (
+                    <button
+                      key={candidate}
+                      type="button"
+                      disabled={isLoading || !overview}
+                      onClick={() => candidate !== overview?.grade && void changeGrade(candidate)}
+                      aria-pressed={overview?.grade === candidate}
+                      className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-semibold transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50 ${
+                        overview?.grade === candidate
+                          ? "border-house-primary bg-house-primary text-house-on-primary"
+                          : "border-house-primary/50 text-house-primary hover:opacity-80"
+                      }`}
+                    >
+                      {GRADE_LABEL[candidate]}
+                    </button>
+                  ))}
+                </div>
+                {error && <p className="text-xs text-house-accent">{error}</p>}
+              </fieldset>
 
               <Link
                 href="/academy"

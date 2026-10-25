@@ -357,3 +357,15 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] ローカルサーバーで `/academy` と `/audio/lesson2-scene1.mp3` の配信を確認（両方200応答）
 - [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第15回ヒアリング節）を更新
 - [x] `npx tsc --noEmit` / `npm test`（29ファイル・130テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 26. 魔力修練コンテキスト（入学後の学年段階の切り替え）✅実装済み
+
+ユーザーから「鑑定画面で小6か中2か選択できるようにしたい」と依頼を受け、使い方・能力値の扱い・ミッションの扱いの3点をヒアリング。`specs/mana-cultivation.md`「意思決定の経緯（第16回ヒアリング）」節を参照。
+
+- [x] `domain/models/CultivationProgress.test.ts`: `changeGrade`の不変条件テストを先に書く（学年更新／能力値・理解度は不変／ミッション2種がnullになる／同じ学年なら何もしない／`LAUNCHED_GRADES`外は例外で状態不変）
+- [x] `domain/models/CultivationProgress.ts`: `grade`をgetterに変え、`changeGrade(grade)`を実装
+- [x] `usecase/ChangeGrade/ChangeGrade.test.ts` → `ChangeGrade.ts`: 読み込み→`changeGrade`→保存。進捗が無ければ例外
+- [x] `src/stores/useAcademyStore.ts`: `changeGrade(grade)`アクション（`ChangeGrade`実行→`refreshOverview`）を追加
+- [x] `src/app/page.tsx`: 「おかえりなさい」カードに学年ボタン（小6／中2）を追加し、現在の学年を選択状態にする
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第16回ヒアリング節）を更新
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（30ファイル・138テスト）

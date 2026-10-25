@@ -117,6 +117,74 @@ describe("CultivationProgress", () => {
     });
   });
 
+  describe("changeGrade", () => {
+    const exam = new UpcomingExam(
+      "exam-1",
+      "JuniorHigh2ndYearRegularExam",
+      new Date("2026-11-01"),
+      ["unit-1", "unit-2"],
+    );
+    const curriculum = Curriculum.create({
+      id: "curriculum-1",
+      examType: "JuniorHigh2ndYearRegularExam",
+      subject: "Math",
+      title: "中2数学",
+    });
+    const unit = LearningUnit.create(
+      { id: "unit-1", curriculumId: "curriculum-1", title: "一次関数", difficulty: 3 },
+      "Math",
+    );
+
+    function progressWithHistory() {
+      const progress = initiate();
+      progress.completeLearningUnit(curriculum, unit);
+      progress.recordAttempt("unit-1", true);
+      progress.assignDailyMission(exam, "mission-1");
+      progress.offerMockExamMission(exam, "mission-2");
+      return progress;
+    }
+
+    it("switches to another launched grade and keeps abilities and understanding levels", () => {
+      const progress = progressWithHistory();
+
+      progress.changeGrade("Pre");
+
+      expect(progress.grade).toBe("Pre");
+      expect(progress.getAbility("Math").level).toBe(5);
+      expect(progress.getUnderstanding("unit-1").rate).toBe(100);
+    });
+
+    it("cancels the current daily and mock exam missions when the grade changes", () => {
+      const progress = progressWithHistory();
+
+      progress.changeGrade("Pre");
+
+      expect(progress.getCurrentDailyMission()).toBeNull();
+      expect(progress.getMockExamMission()).toBeNull();
+    });
+
+    it("changes nothing when the same grade is chosen", () => {
+      const progress = progressWithHistory();
+      const daily = progress.getCurrentDailyMission();
+      const mock = progress.getMockExamMission();
+
+      progress.changeGrade("Second");
+
+      expect(progress.grade).toBe("Second");
+      expect(progress.getCurrentDailyMission()).toBe(daily);
+      expect(progress.getMockExamMission()).toBe(mock);
+    });
+
+    it("rejects a grade that is not launched yet and leaves the state unchanged", () => {
+      const progress = progressWithHistory();
+
+      expect(() => progress.changeGrade("Third")).toThrow();
+      expect(progress.grade).toBe("Second");
+      expect(progress.getCurrentDailyMission()).not.toBeNull();
+      expect(progress.getMockExamMission()).not.toBeNull();
+    });
+  });
+
   describe("getUnderstandingLevels", () => {
     it("exposes every recorded understanding level, keyed by learningUnitId", () => {
       const progress = initiate();

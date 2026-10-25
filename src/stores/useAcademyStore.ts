@@ -19,6 +19,7 @@ import { GetQuestionsForLearningUnit } from "@/contexts/mana-cultivation/usecase
 import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferMockExamMission/OfferMockExamMission";
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
 import { RecordQuizAttempts } from "@/contexts/mana-cultivation/usecase/RecordQuizAttempts/RecordQuizAttempts";
+import { ChangeGrade } from "@/contexts/mana-cultivation/usecase/ChangeGrade/ChangeGrade";
 import { StartCultivation } from "@/contexts/mana-cultivation/usecase/StartCultivation/StartCultivation";
 import { StartQuiz } from "@/contexts/mana-cultivation/usecase/StartQuiz/StartQuiz";
 import type { QuizAnswerResult } from "@/contexts/mana-cultivation/usecase/SyncQuizProgress/SyncQuizProgress";
@@ -41,6 +42,7 @@ const quizSessionRepository = new FirebaseQuizSessionRepository();
 
 const enrollStudent = new EnrollStudent(studentRepository);
 const startCultivation = new StartCultivation(cultivationProgressRepository);
+const changeGradeUsecase = new ChangeGrade(cultivationProgressRepository);
 const recordAttempt = new RecordAttempt(cultivationProgressRepository);
 const generateDailyMission = new GenerateDailyMission(cultivationProgressRepository, upcomingExamRepository);
 const offerMockExamMission = new OfferMockExamMission(cultivationProgressRepository, upcomingExamRepository);
@@ -113,6 +115,7 @@ type AcademyState = {
   signIn: (email: string, password: string) => Promise<void>;
   signOutUser: () => Promise<void>;
   enroll: (house: House, grade: Grade) => Promise<void>;
+  changeGrade: (grade: Grade) => Promise<void>;
   refreshOverview: () => Promise<void>;
   recordAttemptFor: (learningUnitId: string, isCorrect: boolean) => Promise<void>;
   assignDailyMission: () => Promise<void>;
@@ -213,6 +216,18 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
       await enrollStudent.execute(studentId, house);
       await startCultivation.execute(studentId, grade);
       set({ house, isEnrolled: true });
+      await get().refreshOverview();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  changeGrade: async (grade) => {
+    set({ isLoading: true, error: null });
+    try {
+      await changeGradeUsecase.execute(currentStudentId(get().authUid), grade);
       await get().refreshOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
