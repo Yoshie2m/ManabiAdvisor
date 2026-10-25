@@ -95,6 +95,7 @@ describe("SyncQuizProgress", () => {
     const understanding = repositories.progresses.get("student-1")?.getUnderstanding(unit.id);
     expect(understanding?.totalCount).toBe(3);
     expect(understanding?.correctCount).toBe(2);
+    expect(repositories.progresses.get("student-1")?.getManaGel("Japanese").count).toBe(2);
     expect(repositories.sessions.get(`student-1:${unit.id}`)?.currentIndex).toBe(3);
   });
 

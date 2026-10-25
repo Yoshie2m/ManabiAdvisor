@@ -392,3 +392,18 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `infrastructure/memory/preSocialSeedData.ts`: 単元番号から分野を決め、分野ごとに4択・一問一答のユニットを作る（問題の無い分野はユニットを作らない）。現在は地理（4択162問・一問一答182問）と歴史（4択102問・一問一答118問）の4ユニット
 - [x] `npx tsc --noEmit` / `npm test`（30ファイル・145テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
 - [x] `npm run seed`でFirestoreへ再投入し、旧ユニット18件・旧問題564件を削除（一時的に書き込みを許可→作業後に元へ戻してデプロイ）。削除後、小6社会のユニットが新しい4件だけであることをFirestoreで確認
+
+## 29. 魔力修練コンテキスト（魔力ジェルの追加）✅実装済み
+
+ユーザーから「勉強をこなすと科目ごとに異なる種類の魔力ジェルを取得できる」ようにしたいと依頼を受け、獲得ルール・使い道・能力値との関係・色の定義場所の4点をヒアリング。`specs/mana-cultivation.md`「意思決定の経緯（第19回ヒアリング）」節を参照。
+
+- [x] `domain/models/ManaGel.test.ts` → `ManaGel.ts`: 0以上の整数、`add`は1以上の整数のみ
+- [x] `domain/models/CultivationProgress.test.ts`: ジェルの不変条件テスト（初期0／正解で科目+1・他科目不変／不正解で不変／繰り返しで加算／所属違いは例外で状態不変）を先に書き、既存の`recordAttempt`テストを新しい引数に合わせる
+- [x] `domain/models/CultivationProgress.ts`: `ManaGel`を5科目分保持、`recordAttempt(curriculum, learningUnit, isCorrect)`・`getManaGel`、`reconstruct`に`manaGels`
+- [x] `usecase/RecordAttempt`・`RecordQuizAttempts`・`SyncQuizProgress`: 単元とカリキュラムを引いて`recordAttempt`へ渡す（テストも更新）
+- [x] `usecase/GetCultivationOverview`: 科目ごとのジェル数を返す
+- [x] `infrastructure/firebase/FirebaseCultivationProgressRepository.ts`: `manaGels`の読み書き（無ければ0）
+- [x] デザインシステム（アーティファクト）に科目ジェルの色トークン`mana-gel-*`5件を追加し（瓶のスプライトの液体色から取得）、`src/styles/tokens.css`へ反映。瓶のスプライトを`public/images/mana-gel/`へ配置
+- [x] `src/stores/useAcademyStore.ts`（ユースケースの組み立て）・`src/app/academy/page.tsx`（修練場の上部に5科目のジェルと所持数を表示）
+- [x] `docs/domain/glossary.md`・`docs/domain/specs/mana-cultivation.md`（第19回ヒアリング節）を更新
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（31ファイル・161テスト）

@@ -72,7 +72,7 @@ describe("GetCultivationOverview", () => {
       learningUnitRepository,
       upcomingExamRepository,
     } = fakeRepositories();
-    progress.recordAttempt("unit-math-1", true);
+    progress.recordAttempt(mathCurriculum, unit1, true);
     const usecase = new GetCultivationOverview(
       cultivationProgressRepository,
       curriculumRepository,
@@ -84,6 +84,9 @@ describe("GetCultivationOverview", () => {
 
     expect(overview.grade).toBe("Second");
     expect(overview.abilities).toHaveLength(5);
+    expect(overview.manaGels).toHaveLength(5);
+    expect(overview.manaGels).toContainEqual({ subject: "Math", count: 1 });
+    expect(overview.manaGels).toContainEqual({ subject: "English", count: 0 });
     expect(overview.units).toEqual([
       expect.objectContaining({ id: "unit-math-1", subject: "Math", understandingRate: 100 }),
     ]);

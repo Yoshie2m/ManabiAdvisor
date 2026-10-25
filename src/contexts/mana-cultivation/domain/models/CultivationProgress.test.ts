@@ -5,6 +5,7 @@ import { SUBJECTS } from "./Subject";
 import { Curriculum } from "./Curriculum";
 import { CultivationProgress } from "./CultivationProgress";
 import { LearningUnit } from "./LearningUnit";
+import { ManaGel } from "./ManaGel";
 import { Mission } from "./Mission";
 import { SubjectAbility } from "./SubjectAbility";
 import { UnderstandingLevel } from "./UnderstandingLevel";
@@ -12,6 +13,17 @@ import { UpcomingExam } from "./UpcomingExam";
 
 function initiate() {
   return CultivationProgress.initiate(StudentId.fromString("student-1"), "Second");
+}
+
+const mathCurriculum = Curriculum.create({
+  id: "curriculum-math",
+  examType: "JuniorHigh2ndYearRegularExam",
+  subject: "Math",
+  title: "中2数学",
+});
+
+function mathUnit(id: string) {
+  return LearningUnit.create({ id, curriculumId: "curriculum-math", title: id, difficulty: 3 }, "Math");
 }
 
 describe("CultivationProgress", () => {
@@ -69,8 +81,8 @@ describe("CultivationProgress", () => {
   describe("recordAttempt", () => {
     it("updates only the targeted unit's understanding level", () => {
       const progress = initiate();
-      progress.recordAttempt("unit-1", true);
-      progress.recordAttempt("unit-1", false);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), false);
 
       const level = progress.getUnderstanding("unit-1");
       expect(level.correctCount).toBe(1);
@@ -79,11 +91,67 @@ describe("CultivationProgress", () => {
     });
   });
 
+  describe("manaGel", () => {
+    const englishCurriculum = Curriculum.create({
+      id: "curriculum-english",
+      examType: "JuniorHigh2ndYearRegularExam",
+      subject: "English",
+      title: "中2英語",
+    });
+
+    it("initiate() starts every subject with 0 gels", () => {
+      const progress = initiate();
+      for (const subject of SUBJECTS) {
+        expect(progress.getManaGel(subject).count).toBe(0);
+      }
+    });
+
+    it("a correct attempt adds 1 gel of the unit's subject only", () => {
+      const progress = initiate();
+
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+
+      expect(progress.getManaGel("Math").count).toBe(1);
+      for (const subject of SUBJECTS.filter((s) => s !== "Math")) {
+        expect(progress.getManaGel(subject).count).toBe(0);
+      }
+    });
+
+    it("an incorrect attempt adds no gels", () => {
+      const progress = initiate();
+
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), false);
+
+      for (const subject of SUBJECTS) {
+        expect(progress.getManaGel(subject).count).toBe(0);
+      }
+    });
+
+    it("keeps adding a gel every time the same unit is answered correctly", () => {
+      const progress = initiate();
+      for (let i = 0; i < 3; i += 1) {
+        progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      }
+
+      expect(progress.getManaGel("Math").count).toBe(3);
+    });
+
+    it("throws and changes nothing when the unit does not belong to the curriculum", () => {
+      const progress = initiate();
+
+      expect(() => progress.recordAttempt(englishCurriculum, mathUnit("unit-1"), true)).toThrow();
+      expect(progress.getUnderstanding("unit-1").totalCount).toBe(0);
+      for (const subject of SUBJECTS) {
+        expect(progress.getManaGel(subject).count).toBe(0);
+      }
+    });
+  });
+
   describe("assignDailyMission", () => {
     it("targets the weakest unit in the exam scope", () => {
       const progress = initiate();
-      progress.recordAttempt("unit-1", true); // rate 100
-      progress.recordAttempt("unit-2", false); // rate 0
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true); // rate 100
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-2"), false); // rate 0
       const exam = new UpcomingExam(
         "exam-1",
         "JuniorHigh2ndYearRegularExam",
@@ -138,7 +206,7 @@ describe("CultivationProgress", () => {
     function progressWithHistory() {
       const progress = initiate();
       progress.completeLearningUnit(curriculum, unit);
-      progress.recordAttempt("unit-1", true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
       progress.assignDailyMission(exam, "mission-1");
       progress.offerMockExamMission(exam, "mission-2");
       return progress;
@@ -188,7 +256,7 @@ describe("CultivationProgress", () => {
   describe("getUnderstandingLevels", () => {
     it("exposes every recorded understanding level, keyed by learningUnitId", () => {
       const progress = initiate();
-      progress.recordAttempt("unit-1", true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
 
       const levels = progress.getUnderstandingLevels();
 
@@ -212,6 +280,7 @@ describe("CultivationProgress", () => {
         understandingLevels,
         currentDailyMission: dailyMission,
         currentMockExamMission: mockExamMission,
+        manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, 7)])),
       });
 
       expect(progress.studentId).toBe(studentId);
@@ -220,6 +289,7 @@ describe("CultivationProgress", () => {
       expect(progress.getUnderstanding("unit-1").correctCount).toBe(3);
       expect(progress.getCurrentDailyMission()).toBe(dailyMission);
       expect(progress.getMockExamMission()).toBe(mockExamMission);
+      expect(progress.getManaGel("Japanese").count).toBe(7);
     });
 
     it("restores null missions as-is", () => {
@@ -231,6 +301,7 @@ describe("CultivationProgress", () => {
         understandingLevels: new Map(),
         currentDailyMission: null,
         currentMockExamMission: null,
+        manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.none(subject)])),
       });
 
       expect(progress.getCurrentDailyMission()).toBeNull();

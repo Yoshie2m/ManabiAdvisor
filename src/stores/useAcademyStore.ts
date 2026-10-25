@@ -43,7 +43,7 @@ const quizSessionRepository = new FirebaseQuizSessionRepository();
 const enrollStudent = new EnrollStudent(studentRepository);
 const startCultivation = new StartCultivation(cultivationProgressRepository);
 const changeGradeUsecase = new ChangeGrade(cultivationProgressRepository);
-const recordAttempt = new RecordAttempt(cultivationProgressRepository);
+const recordAttempt = new RecordAttempt(cultivationProgressRepository, learningUnitRepository, curriculumRepository);
 const generateDailyMission = new GenerateDailyMission(cultivationProgressRepository, upcomingExamRepository);
 const offerMockExamMission = new OfferMockExamMission(cultivationProgressRepository, upcomingExamRepository);
 const getCultivationOverview = new GetCultivationOverview(
@@ -61,7 +61,11 @@ const syncQuizProgress = new SyncQuizProgress(
   curriculumRepository,
   learningUnitRepository,
 );
-const recordQuizAttempts = new RecordQuizAttempts(cultivationProgressRepository);
+const recordQuizAttempts = new RecordQuizAttempts(
+  cultivationProgressRepository,
+  learningUnitRepository,
+  curriculumRepository,
+);
 
 function currentStudentId(authUid: string | null): StudentId {
   if (!authUid) {

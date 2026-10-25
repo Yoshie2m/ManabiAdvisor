@@ -7,6 +7,7 @@ import { LAUNCHED_GRADES } from "../specs/GradeExamTypePolicy";
 import type { Curriculum } from "./Curriculum";
 import type { Grade } from "./Grade";
 import type { LearningUnit } from "./LearningUnit";
+import { ManaGel } from "./ManaGel";
 import { Mission } from "./Mission";
 import { SUBJECTS, type Subject } from "./Subject";
 import { SubjectAbility } from "./SubjectAbility";
@@ -24,6 +25,7 @@ export class CultivationProgress {
     readonly studentId: StudentId,
     private currentGrade: Grade,
     private readonly abilities: Map<Subject, SubjectAbility>,
+    private readonly manaGels: Map<Subject, ManaGel>,
   ) {}
 
   get grade(): Grade {
@@ -45,7 +47,8 @@ export class CultivationProgress {
 
   static initiate(studentId: StudentId, grade: Grade): CultivationProgress {
     const abilities = new Map(SUBJECTS.map((subject) => [subject, SubjectAbility.initial(subject)]));
-    return new CultivationProgress(studentId, grade, abilities);
+    const manaGels = new Map(SUBJECTS.map((subject) => [subject, ManaGel.none(subject)]));
+    return new CultivationProgress(studentId, grade, abilities, manaGels);
   }
 
   // Trusts persisted invariants instead of re-deriving them; use `initiate` for a brand-new student.
@@ -56,8 +59,14 @@ export class CultivationProgress {
     understandingLevels: ReadonlyMap<string, UnderstandingLevel>;
     currentDailyMission: Mission | null;
     currentMockExamMission: Mission | null;
+    manaGels: ReadonlyMap<Subject, ManaGel>;
   }): CultivationProgress {
-    const progress = new CultivationProgress(params.studentId, params.grade, new Map(params.abilities));
+    const progress = new CultivationProgress(
+      params.studentId,
+      params.grade,
+      new Map(params.abilities),
+      new Map(params.manaGels),
+    );
     for (const [learningUnitId, level] of params.understandingLevels) {
       progress.understandingLevels.set(learningUnitId, level);
     }
@@ -91,9 +100,24 @@ export class CultivationProgress {
     return this.understandingLevels.get(learningUnitId) ?? UnderstandingLevel.zero(learningUnitId);
   }
 
-  recordAttempt(learningUnitId: string, isCorrect: boolean): UnderstandingLevel {
-    const next = this.getUnderstanding(learningUnitId).recordAttempt(isCorrect);
-    this.understandingLevels.set(learningUnitId, next);
+  getManaGel(subject: Subject): ManaGel {
+    const gel = this.manaGels.get(subject);
+    if (!gel) {
+      throw new Error(`Unknown subject: ${subject}`);
+    }
+    return gel;
+  }
+
+  // 正解なら、理解度の記録に加えてその単元の科目の魔力ジェルを1個増やす。
+  recordAttempt(curriculum: Curriculum, learningUnit: LearningUnit, isCorrect: boolean): UnderstandingLevel {
+    if (learningUnit.curriculumId !== curriculum.id) {
+      throw new Error("LearningUnit does not belong to the given Curriculum");
+    }
+    const next = this.getUnderstanding(learningUnit.id).recordAttempt(isCorrect);
+    this.understandingLevels.set(learningUnit.id, next);
+    if (isCorrect) {
+      this.manaGels.set(curriculum.subject, this.getManaGel(curriculum.subject).add(1));
+    }
     return next;
   }
 

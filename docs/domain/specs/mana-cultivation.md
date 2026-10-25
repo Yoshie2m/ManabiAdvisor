@@ -409,6 +409,38 @@ class RecordQuizAttempts {
 
 ドメインモデルの変更は無く、`infrastructure/memory/preSocialSeedData.ts`のまとめ方だけを変えた（単元ごとのデータはそのまま残し、分野ごとに束ねてユニット・問題を作る）。学習ユニットIDは`unit-pre-social-{geography|history|civics|comprehensive}-{choice|recall}`。旧ユニット（`unit-pre-social-01-choice`等）と旧問題はFirestoreから削除する。
 
+## 意思決定の経緯（第19回ヒアリング: 魔力ジェルの追加）
+
+ユーザーから「勉強をこなすと魔力ジェルというポイントを取得できる。科目によって異なる種類のジェルを取得する」という依頼を受けた。ジェルの種類（色）は、言霊（国語）＝紅、数秘（数学）＝青、異界語（英語）＝緑、錬金（理科）＝雷の金色、地誌・歴史（社会）＝琥珀の茶をベース。実装前にユーザーへ4点を確認し、以下の方針で合意済み:
+
+1. **獲得ルール**: 1問正解するごとに、その問題の単元が属する科目のジェルを1個獲得する。やり直し（ボーナス周回）で正解した場合も獲得する（繰り返し復習のごほうび）。不正解では獲得しない。
+2. **使い道**: 今は貯めて表示するだけ。使う機能（交換など）は後で設計する。
+3. **能力値との関係**: 既存の`SubjectAbility`（上限100の成長度）はそのまま残し、ジェルは上限の無いポイントとして別に持つ。
+4. **色**: `CLAUDE.md`の方針どおり、デザインシステム（Advisaria Magica Academy Design System）に科目ジェルの色トークンを追加してから`tokens.css`へ反映する。
+
+### 実装
+
+**ドメイン層の変更**:
+- 値オブジェクト`ManaGel`（科目ごとのジェル所持数）を新設する。
+- `CultivationProgress`が5科目すべての`ManaGel`（初期値0）を持つ。
+- `recordAttempt`の引数を`(learningUnitId, isCorrect)`から`(curriculum, learningUnit, isCorrect)`に変える。`completeLearningUnit`と同じく、単元がそのカリキュラムに属さなければ例外を投げる。
+- 正解なら、理解度の記録に加えて`curriculum.subject`のジェルを1増やす。科目を集約の中で確定させ、「正解すると、その科目のジェルが必ず1増える」という不変条件を集約が守るためにこの形にする。
+
+**ユースケース層**: `RecordAttempt`・`RecordQuizAttempts`に`LearningUnitRepository`・`CurriculumRepository`を渡し、単元とカリキュラムを引いてから`recordAttempt`を呼ぶ。`SyncQuizProgress`は既に両方を持っているので、それを使う。`GetCultivationOverview`は科目ごとのジェル数を返す。
+
+**インフラ層**: `cultivationProgress`ドキュメントに`manaGels`（科目→個数）を追加する。既存のドキュメントに無い場合は全科目0として読む。
+
+**UI層**: 修練場のタブの上に、5科目のジェルと所持数を表示する。デザインシステムの「Items」グループに、ユーザーが用意した魔力ジェルの瓶のスプライト（`mana-gel-<科目キー>.png`、科目キーは既存の科目アイコンと同じ`kotodama`/`suhi`/`ikaigo`/`renkin`/`chishi-rekishi`）があったため、これを`public/images/mana-gel/`に置いて瓶の画像として使う。色トークン`mana-gel-*`は瓶の液体の色から取り、デザインシステムの`tokens.json`に追加したうえで`tokens.css`に反映した（各ジェルの下線に使用）。
+
+### テストで守る不変条件
+
+- `initiate`された進捗は5科目すべてのジェルを0個で持つ。
+- `recordAttempt`で正解すると、その単元の科目のジェルだけが1増え、他の科目のジェルは変わらない。
+- `recordAttempt`で不正解なら、どの科目のジェルも変わらない。
+- 同じ単元で繰り返し正解すれば、そのたびに1ずつ増える（上限は無い）。
+- 単元が渡したカリキュラムに属さない場合は例外を投げ、理解度もジェルも変わらない。
+- `ManaGel`の個数は0以上の整数。`add`は1以上の整数だけを受け付ける。
+
 ## 値オブジェクト
 
 ### ExamType
@@ -460,6 +492,20 @@ class SubjectAbility {
 
 - **不変条件**: `level` は常に 0〜100（生成時・`increase`後とも）。`increase` は `Math.min(100, level + amount)` でクランプし、上限を超えない。
 - `increase` の `amount` は正の数でなければならない（0以下は例外）。
+
+### ManaGel（新規・第19回ヒアリング）
+
+```ts
+class ManaGel {
+  static none(subject: Subject): ManaGel; // count = 0 で生成
+  static create(subject: Subject, count: number): ManaGel; // countが0以上の整数でなければ例外
+  readonly subject: Subject;
+  readonly count: number; // 0以上の整数。上限なし
+  add(amount: number): ManaGel; // amountが1以上の整数でなければ例外。新しいManaGelを返す（不変）
+}
+```
+
+- **不変条件**: `count` は常に0以上の整数。上限は無い（`SubjectAbility`の0〜100とは別の、貯まるポイント）。
 
 ### UnderstandingLevel（新規）
 
@@ -698,7 +744,8 @@ class CultivationProgress {
 
   // ミッション生成（新規）
   getUnderstanding(learningUnitId: string): UnderstandingLevel; // 未記録なら UnderstandingLevel.zero(learningUnitId)
-  recordAttempt(learningUnitId: string, isCorrect: boolean): UnderstandingLevel;
+  recordAttempt(curriculum: Curriculum, learningUnit: LearningUnit, isCorrect: boolean): UnderstandingLevel; // 第19回で引数変更。正解なら科目のジェル+1
+  getManaGel(subject: Subject): ManaGel; // 第19回ヒアリング
   getCurrentDailyMission(): Mission | null;
   assignDailyMission(
     upcomingExam: UpcomingExam,

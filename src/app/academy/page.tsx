@@ -1578,6 +1578,46 @@ function ExamCountdown({ scheduledDate }: { scheduledDate: Date }) {
   );
 }
 
+const SUBJECT_SHORT_NAME: Record<Subject, string> = {
+  Japanese: "言霊",
+  Math: "数秘",
+  English: "異界語",
+  Science: "錬金",
+  SocialStudies: "地誌・歴史",
+};
+
+// 科目ごとの魔力ジェルの所持数。瓶の画像・色はデザインシステムの Items / mana-gel-* トークン。
+function ManaGelShelf({ manaGels }: { manaGels: CultivationOverview["manaGels"] }) {
+  return (
+    <section aria-label="魔力ジェル" className="flex flex-wrap items-end gap-3">
+      {manaGels.map((gel) => (
+        <div
+          key={gel.subject}
+          className="flex items-center gap-1.5 border-b-2 pb-1"
+          style={{ borderColor: `var(--color-mana-gel-${SUBJECT_ICON[gel.subject]})` }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/images/mana-gel/${SUBJECT_ICON[gel.subject]}.png`}
+            alt=""
+            width={24}
+            height={32}
+            className="[image-rendering:pixelated]"
+          />
+          <span className="text-xs">
+            <span className="sr-only">{SUBJECT_SHORT_NAME[gel.subject]}のジェル</span>
+            <span aria-hidden="true" className="opacity-80">
+              {SUBJECT_SHORT_NAME[gel.subject]}
+            </span>{" "}
+            <span className="font-semibold tabular-nums">{gel.count}</span>
+            <span className="sr-only">個</span>
+          </span>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function HomeTab({
   overview,
   unitById,
@@ -1895,6 +1935,8 @@ export default function AcademyPage() {
             ← 鑑定画面
           </Link>
         </div>
+
+        <ManaGelShelf manaGels={overview.manaGels} />
 
         <TabBar
           value={tab}

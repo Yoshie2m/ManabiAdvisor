@@ -30,8 +30,16 @@ export class SyncQuizProgress {
     if (!progress) {
       throw new Error(`CultivationProgress not found for student: ${studentId.toString()}`);
     }
+    const learningUnit = await this.learningUnitRepository.findById(learningUnitId);
+    if (!learningUnit) {
+      throw new Error(`LearningUnit not found: ${learningUnitId}`);
+    }
+    const curriculum = await this.curriculumRepository.findById(learningUnit.curriculumId);
+    if (!curriculum) {
+      throw new Error(`Curriculum not found: ${learningUnit.curriculumId}`);
+    }
     for (const result of results) {
-      progress.recordAttempt(learningUnitId, result.isCorrect);
+      progress.recordAttempt(curriculum, learningUnit, result.isCorrect);
     }
 
     let session = await this.quizSessionRepository.find(studentId, learningUnitId);
@@ -43,14 +51,6 @@ export class SyncQuizProgress {
     }
 
     if (session.isComplete) {
-      const learningUnit = await this.learningUnitRepository.findById(learningUnitId);
-      if (!learningUnit) {
-        throw new Error(`LearningUnit not found: ${learningUnitId}`);
-      }
-      const curriculum = await this.curriculumRepository.findById(learningUnit.curriculumId);
-      if (!curriculum) {
-        throw new Error(`Curriculum not found: ${learningUnit.curriculumId}`);
-      }
       progress.completeLearningUnit(curriculum, learningUnit);
       await this.cultivationProgressRepository.save(progress);
       await this.quizSessionRepository.delete(studentId, learningUnitId);

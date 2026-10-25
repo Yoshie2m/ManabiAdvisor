@@ -18,6 +18,13 @@
   --color-rose-accent: #d6a4e0;
   --color-rose-focus: #b983d6;
 
+  /* 魔力ジェル（科目ごと）。デザインシステム tokens.json の mana-gel-* と同じ値。塗り・装飾用。 */
+  --color-mana-gel-kotodama: #e0364a;
+  --color-mana-gel-suhi: #3a7bea;
+  --color-mana-gel-ikaigo: #3cc46a;
+  --color-mana-gel-renkin: #f2c230;
+  --color-mana-gel-chishi-rekishi: #b8743a;
+
   --house-bg: var(--color-regius-bg);
   --house-text: var(--color-regius-text);
   --house-primary: var(--color-regius-primary);

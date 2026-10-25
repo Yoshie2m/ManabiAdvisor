@@ -5,6 +5,7 @@ import { firestore } from "@/lib/firebase";
 import type { StudentId } from "../../../house-assignment/domain/models/StudentId";
 import { CultivationProgress } from "../../domain/models/CultivationProgress";
 import type { Grade } from "../../domain/models/Grade";
+import { ManaGel } from "../../domain/models/ManaGel";
 import { Mission, type MissionType } from "../../domain/models/Mission";
 import { SUBJECTS, type Subject } from "../../domain/models/Subject";
 import { SubjectAbility } from "../../domain/models/SubjectAbility";
@@ -25,6 +26,8 @@ type CultivationProgressDocument = {
   understandingLevels: Record<string, { correctCount: number; totalCount: number }>;
   currentDailyMission: MissionDocument | null;
   currentMockExamMission: MissionDocument | null;
+  // 第19回ヒアリングで追加。それ以前のドキュメントには無いため、読み込み時は全科目0として扱う。
+  manaGels?: Partial<Record<Subject, number>>;
 };
 
 function toMission(document: MissionDocument | null): Mission | null {
@@ -62,6 +65,7 @@ export class FirebaseCultivationProgressRepository implements CultivationProgres
       understandingLevels,
       currentDailyMission: toMission(data.currentDailyMission),
       currentMockExamMission: toMission(data.currentMockExamMission),
+      manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, data.manaGels?.[subject] ?? 0)])),
     });
   }
 
@@ -83,6 +87,7 @@ export class FirebaseCultivationProgressRepository implements CultivationProgres
       understandingLevels,
       currentDailyMission: fromMission(progress.getCurrentDailyMission()),
       currentMockExamMission: fromMission(progress.getMockExamMission()),
+      manaGels: Object.fromEntries(SUBJECTS.map((subject) => [subject, progress.getManaGel(subject).count])),
     };
 
     await setDoc(doc(firestore, COLLECTION, progress.studentId.toString()), data);

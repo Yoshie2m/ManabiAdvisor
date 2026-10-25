@@ -42,9 +42,12 @@ export type UpcomingExamView = {
   targetLearningUnitIds: string[];
 } | null;
 
+export type ManaGelView = { subject: Subject; count: number };
+
 export type CultivationOverview = {
   grade: Grade;
   abilities: SubjectAbilityView[];
+  manaGels: ManaGelView[];
   units: LearningUnitView[];
   dailyMission: MissionView;
   mockExamMission: MissionView;
@@ -88,6 +91,10 @@ export class GetCultivationOverview {
 
     return {
       grade: progress.grade,
+      manaGels: SUBJECTS.map((subject) => ({
+        subject,
+        count: progress.getManaGel(subject).count,
+      })),
       abilities: SUBJECTS.map((subject) => ({
         subject,
         level: progress.getAbility(subject).level,
