@@ -1,27 +1,19 @@
 import type { StudentId } from "../../../house-assignment/domain/models/StudentId";
-import {
-  lowestUnderstandingRateFirstPolicy,
-  type FocusUnitSelectionPolicy,
-} from "../specs/FocusUnitSelectionPolicy";
 import { LAUNCHED_GRADES } from "../specs/GradeExamTypePolicy";
 import type { CharacterCard } from "./CharacterCard";
 import type { Curriculum } from "./Curriculum";
 import type { Grade } from "./Grade";
 import type { LearningUnit } from "./LearningUnit";
 import { ManaGel } from "./ManaGel";
-import { Mission } from "./Mission";
 import { SUBJECTS, type Subject } from "./Subject";
 import { SubjectAbility } from "./SubjectAbility";
 import { UnderstandingLevel } from "./UnderstandingLevel";
-import type { UpcomingExam } from "./UpcomingExam";
 
 const LEARNING_UNIT_COMPLETION_GAIN = 5;
 
 export class CultivationProgress {
   private readonly understandingLevels = new Map<string, UnderstandingLevel>();
   private readonly acquiredCardIds = new Set<string>();
-  private currentDailyMission: Mission | null = null;
-  private currentMockExamMission: Mission | null = null;
 
   private constructor(
     readonly studentId: StudentId,
@@ -34,17 +26,12 @@ export class CultivationProgress {
     return this.currentGrade;
   }
 
-  // 能力値・単元ごとの理解度は学年をまたいで残す。ミッションは元の学年の試験範囲を指すため取り消す。
+  // 能力値・理解度・ジェル・獲得カードは学年をまたいで残す。
   changeGrade(grade: Grade): void {
     if (!LAUNCHED_GRADES.includes(grade)) {
       throw new Error(`Grade is not launched yet: ${grade}`);
     }
-    if (grade === this.currentGrade) {
-      return;
-    }
     this.currentGrade = grade;
-    this.currentDailyMission = null;
-    this.currentMockExamMission = null;
   }
 
   static initiate(studentId: StudentId, grade: Grade): CultivationProgress {
@@ -59,8 +46,6 @@ export class CultivationProgress {
     grade: Grade;
     abilities: ReadonlyMap<Subject, SubjectAbility>;
     understandingLevels: ReadonlyMap<string, UnderstandingLevel>;
-    currentDailyMission: Mission | null;
-    currentMockExamMission: Mission | null;
     manaGels: ReadonlyMap<Subject, ManaGel>;
     acquiredCardIds: ReadonlySet<string>;
   }): CultivationProgress {
@@ -76,8 +61,6 @@ export class CultivationProgress {
     for (const cardId of params.acquiredCardIds) {
       progress.acquiredCardIds.add(cardId);
     }
-    progress.currentDailyMission = params.currentDailyMission;
-    progress.currentMockExamMission = params.currentMockExamMission;
     return progress;
   }
 
@@ -143,31 +126,5 @@ export class CultivationProgress {
       this.manaGels.set(curriculum.subject, this.getManaGel(curriculum.subject).add(1));
     }
     return next;
-  }
-
-  getCurrentDailyMission(): Mission | null {
-    return this.currentDailyMission;
-  }
-
-  assignDailyMission(
-    upcomingExam: UpcomingExam,
-    missionId: string,
-    policy: FocusUnitSelectionPolicy = lowestUnderstandingRateFirstPolicy,
-  ): Mission {
-    const understandingLevels = upcomingExam.targetLearningUnitIds.map((id) => this.getUnderstanding(id));
-    const focusUnitId = policy.selectFocusUnit(upcomingExam.targetLearningUnitIds, understandingLevels);
-    const mission = Mission.assignDaily(missionId, focusUnitId);
-    this.currentDailyMission = mission;
-    return mission;
-  }
-
-  getMockExamMission(): Mission | null {
-    return this.currentMockExamMission;
-  }
-
-  offerMockExamMission(upcomingExam: UpcomingExam, missionId: string): Mission {
-    const mission = Mission.offerMockExam(missionId, upcomingExam);
-    this.currentMockExamMission = mission;
-    return mission;
   }
 }

@@ -1,4 +1,4 @@
-import { doc, getDoc, Timestamp } from "firebase/firestore/lite";
+import { collection, getDocs, query, where, type Timestamp } from "firebase/firestore/lite";
 
 import { firestore } from "@/lib/firebase";
 
@@ -9,22 +9,25 @@ import type { UpcomingExamRepository } from "../../domain/repositories/UpcomingE
 const COLLECTION = "upcomingExams";
 
 type UpcomingExamDocument = {
-  id: string;
+  title: string;
   examType: ExamType;
   scheduledDate: Timestamp;
   targetLearningUnitIds: string[];
 };
 
-// Keyed by examType itself: this repository's contract allows at most one
-// upcoming exam per exam type at a time.
+// 予定ごとに upcomingExams/{id}。1つの examType に複数の予定を持てる（第21回ヒアリング）。
 export class FirebaseUpcomingExamRepository implements UpcomingExamRepository {
-  async findByExamType(examType: ExamType): Promise<UpcomingExam | null> {
-    const snapshot = await getDoc(doc(firestore, COLLECTION, examType));
-    if (!snapshot.exists()) {
-      return null;
-    }
-
-    const data = snapshot.data() as UpcomingExamDocument;
-    return new UpcomingExam(data.id, data.examType, data.scheduledDate.toDate(), data.targetLearningUnitIds);
+  async findAllByExamType(examType: ExamType): Promise<UpcomingExam[]> {
+    const snapshot = await getDocs(query(collection(firestore, COLLECTION), where("examType", "==", examType)));
+    return snapshot.docs.map((document) => {
+      const data = document.data() as UpcomingExamDocument;
+      return UpcomingExam.create({
+        id: document.id,
+        title: data.title,
+        examType: data.examType,
+        scheduledDate: data.scheduledDate.toDate(),
+        targetLearningUnitIds: data.targetLearningUnitIds,
+      });
+    });
   }
 }

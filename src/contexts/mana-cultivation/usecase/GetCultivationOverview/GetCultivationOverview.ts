@@ -1,14 +1,13 @@
 import type { StudentId } from "../../../house-assignment/domain/models/StudentId";
 import type { Difficulty } from "../../domain/models/Difficulty";
-import type { ExamType } from "../../domain/models/ExamType";
 import type { Grade } from "../../domain/models/Grade";
-import type { Mission, MissionType } from "../../domain/models/Mission";
 import type { QuestionType } from "../../domain/models/QuestionType";
 import { SUBJECTS, type Subject } from "../../domain/models/Subject";
 import type { CultivationProgressRepository } from "../../domain/repositories/CultivationProgressRepository";
 import type { CurriculumRepository } from "../../domain/repositories/CurriculumRepository";
 import type { LearningUnitRepository } from "../../domain/repositories/LearningUnitRepository";
 import type { UpcomingExamRepository } from "../../domain/repositories/UpcomingExamRepository";
+import { examReadinessPolicy } from "../../domain/specs/ExamReadinessPolicy";
 import { gradeExamTypePolicy } from "../../domain/specs/GradeExamTypePolicy";
 
 export type SubjectAbilityView = {
@@ -29,18 +28,15 @@ export type LearningUnitView = {
   attemptCount: number;
 };
 
-export type MissionView = {
+// 予定されたテスト1件の目標カード用の情報（第21回ヒアリング）。
+export type ExamGoalView = {
   id: string;
-  type: MissionType;
-  targetLearningUnitIds: string[];
-} | null;
-
-export type UpcomingExamView = {
-  id: string;
-  examType: ExamType;
+  title: string;
   scheduledDate: Date;
-  targetLearningUnitIds: string[];
-} | null;
+  readiness: number;
+  focusUnitId: string | null;
+  focusUnitTitle: string | null;
+};
 
 export type ManaGelView = { subject: Subject; count: number };
 
@@ -49,21 +45,8 @@ export type CultivationOverview = {
   abilities: SubjectAbilityView[];
   manaGels: ManaGelView[];
   units: LearningUnitView[];
-  dailyMission: MissionView;
-  mockExamMission: MissionView;
-  upcomingExam: UpcomingExamView;
+  examGoals: ExamGoalView[];
 };
-
-function toMissionView(mission: Mission | null): MissionView {
-  if (!mission) {
-    return null;
-  }
-  return {
-    id: mission.id,
-    type: mission.type,
-    targetLearningUnitIds: [...mission.targetLearningUnitIds],
-  };
-}
 
 export class GetCultivationOverview {
   constructor(
@@ -87,7 +70,22 @@ export class GetCultivationOverview {
     );
     const units = unitLists.flat();
 
-    const upcomingExam = await this.upcomingExamRepository.findByExamType(examType);
+    const exams = await this.upcomingExamRepository.findAllByExamType(examType);
+    const unitTitleById = new Map(units.map((unit) => [unit.id, unit.title]));
+    const examGoals = [...exams]
+      .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime())
+      .map((exam) => {
+        const levels = exam.targetLearningUnitIds.map((id) => progress.getUnderstanding(id));
+        const { readiness, focusUnitId } = examReadinessPolicy.assess(exam.targetLearningUnitIds, levels);
+        return {
+          id: exam.id,
+          title: exam.title,
+          scheduledDate: exam.scheduledDate,
+          readiness,
+          focusUnitId,
+          focusUnitTitle: focusUnitId ? (unitTitleById.get(focusUnitId) ?? null) : null,
+        };
+      });
 
     return {
       grade: progress.grade,
@@ -111,16 +109,7 @@ export class GetCultivationOverview {
         understandingRate: progress.getUnderstanding(unit.id).rate,
         attemptCount: progress.getUnderstanding(unit.id).totalCount,
       })),
-      dailyMission: toMissionView(progress.getCurrentDailyMission()),
-      mockExamMission: toMissionView(progress.getMockExamMission()),
-      upcomingExam: upcomingExam
-        ? {
-            id: upcomingExam.id,
-            examType: upcomingExam.examType,
-            scheduledDate: upcomingExam.scheduledDate,
-            targetLearningUnitIds: [...upcomingExam.targetLearningUnitIds],
-          }
-        : null,
+      examGoals,
     };
   }
 }

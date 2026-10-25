@@ -18,7 +18,6 @@ import { FirebaseQuizSessionRepository } from "@/contexts/mana-cultivation/infra
 import { FirebaseUpcomingExamRepository } from "@/contexts/mana-cultivation/infrastructure/firebase/FirebaseUpcomingExamRepository";
 import { ExchangeGelsForCard } from "@/contexts/mana-cultivation/usecase/ExchangeGelsForCard/ExchangeGelsForCard";
 import { FindQuizSession } from "@/contexts/mana-cultivation/usecase/FindQuizSession/FindQuizSession";
-import { GenerateDailyMission } from "@/contexts/mana-cultivation/usecase/GenerateDailyMission/GenerateDailyMission";
 import type { CultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
 import { GetCultivationOverview } from "@/contexts/mana-cultivation/usecase/GetCultivationOverview/GetCultivationOverview";
 import {
@@ -26,7 +25,6 @@ import {
   type CharacterCardView,
 } from "@/contexts/mana-cultivation/usecase/GetCharacterCollection/GetCharacterCollection";
 import { GetQuestionsForLearningUnit } from "@/contexts/mana-cultivation/usecase/GetQuestionsForLearningUnit/GetQuestionsForLearningUnit";
-import { OfferMockExamMission } from "@/contexts/mana-cultivation/usecase/OfferMockExamMission/OfferMockExamMission";
 import { RecordAttempt } from "@/contexts/mana-cultivation/usecase/RecordAttempt/RecordAttempt";
 import { RecordQuizAttempts } from "@/contexts/mana-cultivation/usecase/RecordQuizAttempts/RecordQuizAttempts";
 import { ChangeGrade } from "@/contexts/mana-cultivation/usecase/ChangeGrade/ChangeGrade";
@@ -59,8 +57,6 @@ const getTodaysBuddyCheer = new GetTodaysBuddyCheer(new FirebaseBuddyCheerReposi
 const startCultivation = new StartCultivation(cultivationProgressRepository);
 const changeGradeUsecase = new ChangeGrade(cultivationProgressRepository);
 const recordAttempt = new RecordAttempt(cultivationProgressRepository, learningUnitRepository, curriculumRepository);
-const generateDailyMission = new GenerateDailyMission(cultivationProgressRepository, upcomingExamRepository);
-const offerMockExamMission = new OfferMockExamMission(cultivationProgressRepository, upcomingExamRepository);
 const getCultivationOverview = new GetCultivationOverview(
   cultivationProgressRepository,
   curriculumRepository,
@@ -145,8 +141,6 @@ type AcademyState = {
   changeGrade: (grade: Grade) => Promise<void>;
   refreshOverview: () => Promise<void>;
   recordAttemptFor: (learningUnitId: string, isCorrect: boolean) => Promise<void>;
-  assignDailyMission: () => Promise<void>;
-  offerMockExam: () => Promise<void>;
   fetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
   checkQuizSession: (learningUnitId: string) => Promise<QuizSessionView | null>;
   startQuizSession: (learningUnitId: string, totalQuestions: number) => Promise<QuizSessionView>;
@@ -325,26 +319,6 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
     try {
       const studentId = currentStudentId(get().authUid);
       await recordAttempt.execute(studentId, learningUnitId, isCorrect);
-      await get().refreshOverview();
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : String(error) });
-    }
-  },
-
-  assignDailyMission: async () => {
-    try {
-      const studentId = currentStudentId(get().authUid);
-      await generateDailyMission.execute(studentId, `daily-${Date.now()}`);
-      await get().refreshOverview();
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : String(error) });
-    }
-  },
-
-  offerMockExam: async () => {
-    try {
-      const studentId = currentStudentId(get().authUid);
-      await offerMockExamMission.execute(studentId, `mock-${Date.now()}`);
       await get().refreshOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });

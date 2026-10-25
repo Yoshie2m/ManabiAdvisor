@@ -34,8 +34,6 @@ describe("GetCharacterCollection", () => {
       grade: "Second",
       abilities: new Map(SUBJECTS.map((subject) => [subject, SubjectAbility.initial(subject)])),
       understandingLevels: new Map(),
-      currentDailyMission: null,
-      currentMockExamMission: null,
       manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, subject === "Math" ? 30 : 5)])),
       acquiredCardIds: new Set(["card-b"]),
     });

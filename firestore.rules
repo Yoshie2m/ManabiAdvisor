@@ -13,7 +13,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
-    match /upcomingExams/{examType} {
+    match /upcomingExams/{examId} {
       allow read: if true;
       allow write: if false;
     }

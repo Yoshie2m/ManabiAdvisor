@@ -440,3 +440,18 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/stores/useAcademyStore.ts`・`src/app/academy/page.tsx`（一覧・カード表示・交換ボタン）
 - [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（40ファイル・211テスト）
+
+## 32. 魔力修練コンテキスト（中2の予定を目標カードで表示し、ミッションを廃止）✅実装済み
+
+ユーザーから「漢字テストI（11/4）・II（11/9）・III（11/12）と定期テスト（11/30）を、デザインシステムのGoalCardで大広間のバディのコメント欄の下に並べ、魔導評価への秒読み・デイリークエスト・予想問題クエストは削除したい」と依頼を受け、準備状態・次のタスク・ミッションの扱いの3点をヒアリング。`specs/mana-cultivation.md`「意思決定の経緯（第21回ヒアリング）」節を参照。
+
+- [x] `domain/models/UpcomingExam.test.ts` → `UpcomingExam.ts`: `title`追加・`create`、範囲が空の予定を許す
+- [x] `domain/specs/ExamReadinessPolicy.test.ts` → `ExamReadinessPolicy.ts`
+- [x] ミッションの削除: `Mission`（テスト含む）、`CultivationProgress`のミッション関連の操作と`reconstruct`の項目、`GenerateDailyMission`・`OfferMockExamMission`（テスト含む）、`changeGrade`のミッション取り消し
+- [x] `UpcomingExamRepository.findAllByExamType`・`FirebaseUpcomingExamRepository`（`upcomingExams/{id}`）・`FirebaseCultivationProgressRepository`（ミッション項目の削除）
+- [x] `usecase/GetCultivationOverview`: `examGoals`を返す（テスト更新）
+- [x] `infrastructure/memory/seedData.ts`: 予定4件、`scripts/seedFirestore.ts`
+- [x] デザインシステムの`GoalCard`を`src/components/ui/GoalCard.tsx`に実装、`goal-*`の色トークンを`tokens.css`へ反映
+- [x] `src/stores/useAcademyStore.ts`・`src/app/academy/page.tsx`: 大広間をバディ＋目標カードに。秒読み・クエストのカードと関連アクションを削除。次のタスクから魔導書庫の科目へ
+- [x] `npm run seed`でFirestoreへ投入し、旧`upcomingExams/JuniorHigh2ndYearRegularExam`を削除（一時的に書き込みを許可→元へ戻してデプロイ）
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（38ファイル・205テスト。ミッション関連のテストを削除したため件数は減少）

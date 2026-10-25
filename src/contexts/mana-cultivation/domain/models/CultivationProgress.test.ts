@@ -8,10 +8,8 @@ import { LearningUnit } from "./LearningUnit";
 import { CharacterCard } from "./CharacterCard";
 import { GelCost } from "./GelCost";
 import { ManaGel } from "./ManaGel";
-import { Mission } from "./Mission";
 import { SubjectAbility } from "./SubjectAbility";
 import { UnderstandingLevel } from "./UnderstandingLevel";
-import { UpcomingExam } from "./UpcomingExam";
 
 function initiate() {
   return CultivationProgress.initiate(StudentId.fromString("student-1"), "Second");
@@ -208,72 +206,30 @@ describe("CultivationProgress", () => {
     });
   });
 
-  describe("assignDailyMission", () => {
-    it("targets the weakest unit in the exam scope", () => {
-      const progress = initiate();
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true); // rate 100
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-2"), false); // rate 0
-      const exam = new UpcomingExam(
-        "exam-1",
-        "JuniorHigh2ndYearRegularExam",
-        new Date("2026-11-01"),
-        ["unit-1", "unit-2"],
-      );
-
-      const mission = progress.assignDailyMission(exam, "mission-1");
-
-      expect(mission.type).toBe("Daily");
-      expect(mission.targetLearningUnitIds).toEqual(["unit-2"]);
-      expect(progress.getCurrentDailyMission()).toBe(mission);
-    });
-  });
-
-  describe("offerMockExamMission", () => {
-    it("targets the exam's full scope", () => {
-      const progress = initiate();
-      const exam = new UpcomingExam(
-        "exam-1",
-        "JuniorHigh2ndYearRegularExam",
-        new Date("2026-11-01"),
-        ["unit-1", "unit-2", "unit-3"],
-      );
-
-      const mission = progress.offerMockExamMission(exam, "mission-2");
-
-      expect(mission.type).toBe("MockExam");
-      expect(mission.targetLearningUnitIds).toEqual(["unit-1", "unit-2", "unit-3"]);
-      expect(progress.getMockExamMission()).toBe(mission);
-    });
-  });
-
   describe("changeGrade", () => {
-    const exam = new UpcomingExam(
-      "exam-1",
-      "JuniorHigh2ndYearRegularExam",
-      new Date("2026-11-01"),
-      ["unit-1", "unit-2"],
-    );
-    const curriculum = Curriculum.create({
-      id: "curriculum-1",
-      examType: "JuniorHigh2ndYearRegularExam",
-      subject: "Math",
-      title: "中2数学",
+    const card = CharacterCard.create({
+      id: "card-amou",
+      number: 1,
+      name: "天羽",
+      furigana: "アモウ",
+      title: "銀翼のキャプテン",
+      flavor: "「決めるまで走り続ける」",
+      rarity: 3,
+      attribute: "Math",
+      imageUrl: "/images/characters/amou-full.png",
+      cost: GelCost.create("Math", 1),
     });
-    const unit = LearningUnit.create(
-      { id: "unit-1", curriculumId: "curriculum-1", title: "一次関数", difficulty: 3 },
-      "Math",
-    );
 
     function progressWithHistory() {
       const progress = initiate();
-      progress.completeLearningUnit(curriculum, unit);
+      progress.completeLearningUnit(mathCurriculum, mathUnit("unit-1"));
       progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
-      progress.assignDailyMission(exam, "mission-1");
-      progress.offerMockExamMission(exam, "mission-2");
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      progress.exchangeForCard(card);
       return progress;
     }
 
-    it("switches to another launched grade and keeps abilities and understanding levels", () => {
+    it("switches to another launched grade and keeps abilities, understanding, gels and cards", () => {
       const progress = progressWithHistory();
 
       progress.changeGrade("Pre");
@@ -281,36 +237,23 @@ describe("CultivationProgress", () => {
       expect(progress.grade).toBe("Pre");
       expect(progress.getAbility("Math").level).toBe(5);
       expect(progress.getUnderstanding("unit-1").rate).toBe(100);
-    });
-
-    it("cancels the current daily and mock exam missions when the grade changes", () => {
-      const progress = progressWithHistory();
-
-      progress.changeGrade("Pre");
-
-      expect(progress.getCurrentDailyMission()).toBeNull();
-      expect(progress.getMockExamMission()).toBeNull();
+      expect(progress.getManaGel("Math").count).toBe(1);
+      expect(progress.hasAcquiredCard("card-amou")).toBe(true);
     });
 
     it("changes nothing when the same grade is chosen", () => {
       const progress = progressWithHistory();
-      const daily = progress.getCurrentDailyMission();
-      const mock = progress.getMockExamMission();
 
       progress.changeGrade("Second");
 
       expect(progress.grade).toBe("Second");
-      expect(progress.getCurrentDailyMission()).toBe(daily);
-      expect(progress.getMockExamMission()).toBe(mock);
     });
 
-    it("rejects a grade that is not launched yet and leaves the state unchanged", () => {
+    it("rejects a grade that is not launched yet and leaves the grade unchanged", () => {
       const progress = progressWithHistory();
 
       expect(() => progress.changeGrade("Third")).toThrow();
       expect(progress.grade).toBe("Second");
-      expect(progress.getCurrentDailyMission()).not.toBeNull();
-      expect(progress.getMockExamMission()).not.toBeNull();
     });
   });
 
@@ -327,20 +270,16 @@ describe("CultivationProgress", () => {
   });
 
   describe("reconstruct", () => {
-    it("restores abilities, understanding levels, and missions without re-deriving them", () => {
+    it("restores abilities, understanding levels, gels and cards without re-deriving them", () => {
       const studentId = StudentId.fromString("student-1");
       const abilities = new Map(SUBJECTS.map((subject) => [subject, SubjectAbility.create(subject, 42)]));
       const understandingLevels = new Map([["unit-1", UnderstandingLevel.create("unit-1", 3, 4)]]);
-      const dailyMission = Mission.reconstruct("mission-daily", "Daily", ["unit-1"]);
-      const mockExamMission = Mission.reconstruct("mission-mock", "MockExam", ["unit-1", "unit-2"]);
 
       const progress = CultivationProgress.reconstruct({
         studentId,
         grade: "Second",
         abilities,
         understandingLevels,
-        currentDailyMission: dailyMission,
-        currentMockExamMission: mockExamMission,
         manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, 7)])),
         acquiredCardIds: new Set(["card-amou"]),
       });
@@ -349,27 +288,8 @@ describe("CultivationProgress", () => {
       expect(progress.grade).toBe("Second");
       expect(progress.getAbility("Math").level).toBe(42);
       expect(progress.getUnderstanding("unit-1").correctCount).toBe(3);
-      expect(progress.getCurrentDailyMission()).toBe(dailyMission);
-      expect(progress.getMockExamMission()).toBe(mockExamMission);
       expect(progress.getManaGel("Japanese").count).toBe(7);
       expect(progress.hasAcquiredCard("card-amou")).toBe(true);
-    });
-
-    it("restores null missions as-is", () => {
-      const abilities = new Map(SUBJECTS.map((subject) => [subject, SubjectAbility.initial(subject)]));
-      const progress = CultivationProgress.reconstruct({
-        studentId: StudentId.fromString("student-1"),
-        grade: "Pre",
-        abilities,
-        understandingLevels: new Map(),
-        currentDailyMission: null,
-        currentMockExamMission: null,
-        manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.none(subject)])),
-        acquiredCardIds: new Set(),
-      });
-
-      expect(progress.getCurrentDailyMission()).toBeNull();
-      expect(progress.getMockExamMission()).toBeNull();
     });
   });
 });

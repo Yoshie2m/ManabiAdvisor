@@ -25,6 +25,13 @@
   --color-mana-gel-renkin: #f2c230;
   --color-mana-gel-chishi-rekishi: #b8743a;
 
+  /* 目標カード（GoalCard）。デザインシステム tokens.json の goal-* と同じ値。残り日数の段階とメーター。 */
+  --goal-calm: #4fc3e8;
+  --goal-focus: #f2c94c;
+  --goal-push: #f2994a;
+  --goal-final: #ff5a5f;
+  --goal-meter: #4cd38a;
+
   --house-bg: var(--color-regius-bg);
   --house-text: var(--color-regius-text);
   --house-primary: var(--color-regius-primary);

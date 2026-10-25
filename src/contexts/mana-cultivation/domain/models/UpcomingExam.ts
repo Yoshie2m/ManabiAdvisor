@@ -1,14 +1,27 @@
 import type { ExamType } from "./ExamType";
 
+export type UpcomingExamProps = {
+  id: string;
+  title: string;
+  examType: ExamType;
+  scheduledDate: Date;
+  targetLearningUnitIds: readonly string[];
+};
+
+// ある ExamType について予定されているテスト。範囲がまだ登録されていない予定も持てる（第21回ヒアリング）。
 export class UpcomingExam {
-  constructor(
+  private constructor(
     readonly id: string,
+    readonly title: string,
     readonly examType: ExamType,
     readonly scheduledDate: Date,
     readonly targetLearningUnitIds: readonly string[],
-  ) {
-    if (targetLearningUnitIds.length === 0) {
-      throw new Error("UpcomingExam.targetLearningUnitIds must not be empty");
+  ) {}
+
+  static create({ id, title, examType, scheduledDate, targetLearningUnitIds }: UpcomingExamProps): UpcomingExam {
+    if (title.trim().length === 0) {
+      throw new Error("UpcomingExam.title must not be empty");
     }
+    return new UpcomingExam(id, title, examType, scheduledDate, [...targetLearningUnitIds]);
   }
 }

@@ -51,8 +51,8 @@ async function main() {
   }
 
   for (const exam of upcomingExams) {
-    await setDoc(doc(firestore, "upcomingExams", exam.examType), {
-      id: exam.id,
+    await setDoc(doc(firestore, "upcomingExams", exam.id), {
+      title: exam.title,
       examType: exam.examType,
       scheduledDate: Timestamp.fromDate(exam.scheduledDate),
       targetLearningUnitIds: exam.targetLearningUnitIds,

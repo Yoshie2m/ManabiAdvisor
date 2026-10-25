@@ -39,8 +39,6 @@ function progressWithEnglishGels(studentId: StudentId, count: number) {
     grade: "Second",
     abilities: new Map(SUBJECTS.map((subject) => [subject, SubjectAbility.initial(subject)])),
     understandingLevels: new Map(),
-    currentDailyMission: null,
-    currentMockExamMission: null,
     manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, subject === "English" ? count : 0)])),
     acquiredCardIds: new Set(),
   });

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { BUDDY_PROFILE, BuddyPortrait } from "@/components/ui/BuddyPortrait";
 import { CollectionCard } from "@/components/ui/CollectionCard";
+import { GoalCard } from "@/components/ui/GoalCard";
 import { GrimoireCard } from "@/components/ui/GrimoireCard";
 import { QuizCard, type QuizKind } from "@/components/ui/QuizCard";
 import { TabBar } from "@/components/ui/TabBar";
@@ -1544,36 +1545,6 @@ function AbilityBar({ subject, level }: { subject: Subject; level: number }) {
   );
 }
 
-function ExamCountdown({ scheduledDate }: { scheduledDate: Date }) {
-  const [now] = useState(() => Date.now());
-  const daysLeft = Math.ceil((scheduledDate.getTime() - now) / (1000 * 60 * 60 * 24));
-  const urgency =
-    daysLeft <= 3 ? "critical" : daysLeft <= 7 ? "urgent" : daysLeft <= 14 ? "warning" : "calm";
-  const ringClassByUrgency: Record<typeof urgency, string> = {
-    calm: "border-house-primary/40",
-    warning: "border-house-primary",
-    urgent: "border-house-accent shadow-[0_0_16px_var(--house-accent)]",
-    critical:
-      "border-house-accent shadow-[0_0_24px_var(--house-accent)] animate-pulse motion-reduce:animate-none",
-  };
-
-  return (
-    <div className="flex items-center gap-4">
-      <div
-        className={`flex h-20 w-20 flex-none items-center justify-center rounded-full border-4 transition-shadow ${ringClassByUrgency[urgency]}`}
-      >
-        <span className="font-display text-2xl font-bold tabular-nums">{Math.max(daysLeft, 0)}</span>
-      </div>
-      <div>
-        <p className="font-display text-sm font-semibold text-house-primary">魔導評価への秒読み</p>
-        <p className="text-sm">
-          {daysLeft > 0 ? `あと${daysLeft}日` : daysLeft === 0 ? "本日実施" : "実施済み"}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // 科目ごとの魔力ジェルの所持数。瓶の画像・色はデザインシステムの Items / mana-gel-* トークン。
 function ManaGelShelf({ manaGels }: { manaGels: CultivationOverview["manaGels"] }) {
   return (
@@ -1624,77 +1595,40 @@ function BuddyCheerCard({ buddy, message }: { buddy: Buddy; message: string | nu
 
 function HomeTab({
   overview,
-  unitById,
-  onAssignDaily,
-  onOfferMock,
   buddy,
   buddyCheer,
+  onOpenUnit,
 }: {
   overview: CultivationOverview;
-  unitById: Map<string, LearningUnitView>;
-  onAssignDaily: () => void;
-  onOfferMock: () => void;
   buddy: Buddy | null;
   buddyCheer: string | null;
+  onOpenUnit: (unitId: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-6">
       {buddy && <BuddyCheerCard buddy={buddy} message={buddyCheer} />}
 
-      {overview.upcomingExam && (
-        <GrimoireCard
-          title={
-            <span className="flex items-center gap-2">
-              <TabIcon name="great-hall" size={24} /> 大広間
-            </span>
-          }
-        >
-          <ExamCountdown scheduledDate={overview.upcomingExam.scheduledDate} />
-        </GrimoireCard>
+      {overview.examGoals.length > 0 && (
+        <section aria-label="テストの予定" className="flex flex-col gap-4">
+          {overview.examGoals.map((goal) => {
+            const focusUnitId = goal.focusUnitId;
+            return (
+              <GoalCard
+                key={goal.id}
+                examName={goal.title}
+                examDate={goal.scheduledDate}
+                progress={goal.readiness}
+                nextTask={
+                  focusUnitId
+                    ? `『${goal.focusUnitTitle ?? focusUnitId}』を解く`
+                    : "テスト範囲の登録待ち"
+                }
+                onTaskClick={focusUnitId ? () => onOpenUnit(focusUnitId) : undefined}
+              />
+            );
+          })}
+        </section>
       )}
-
-      <GrimoireCard title="本日のデイリークエスト">
-        <div className="flex flex-col gap-3">
-          {overview.dailyMission ? (
-            <div className="flex flex-col gap-1">
-              {overview.dailyMission.targetLearningUnitIds.map((id) => {
-                const unit = unitById.get(id);
-                return (
-                  <p key={id} className="text-sm">
-                    {unit ? `${SUBJECT_LABEL[unit.subject]}の修練: 「${unit.title}」に挑め` : id}
-                  </p>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm opacity-80">まだ任務が発令されていません。</p>
-          )}
-          <button
-            type="button"
-            onClick={onAssignDaily}
-            className="rounded-md border border-house-primary px-3 py-1.5 text-sm font-semibold text-house-primary transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-          >
-            デイリークエストを発令する
-          </button>
-        </div>
-      </GrimoireCard>
-
-      <GrimoireCard title="次なる試練 予想問題ミッション">
-        <div className="flex flex-col gap-3">
-          {overview.mockExamMission ? (
-            <p className="text-sm">対象単元数: {overview.mockExamMission.targetLearningUnitIds.length}件</p>
-          ) : (
-            <p className="text-sm opacity-80">まだ提示されていません。</p>
-          )}
-          <button
-            type="button"
-            onClick={onOfferMock}
-            className="rounded-md border border-house-primary px-3 py-1.5 text-sm font-semibold text-house-primary transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
-          >
-            予想問題ミッションを選択する
-          </button>
-        </div>
-      </GrimoireCard>
     </div>
   );
 }
@@ -1984,8 +1918,6 @@ export default function AcademyPage() {
     buddyCheer,
     refreshOverview,
     recordAttemptFor,
-    assignDailyMission,
-    offerMockExam,
     fetchQuestions,
   } = useAcademyStore();
 
@@ -2060,11 +1992,15 @@ export default function AcademyPage() {
         {tab === "hall" && (
           <HomeTab
             overview={overview}
-            unitById={unitById}
-            onAssignDaily={() => void assignDailyMission()}
-            onOfferMock={() => void offerMockExam()}
             buddy={buddy}
             buddyCheer={buddyCheer}
+            onOpenUnit={(unitId) => {
+              const unit = unitById.get(unitId);
+              if (unit) {
+                setSelectedSubject(unit.subject);
+                setTab("library");
+              }
+            }}
           />
         )}
 

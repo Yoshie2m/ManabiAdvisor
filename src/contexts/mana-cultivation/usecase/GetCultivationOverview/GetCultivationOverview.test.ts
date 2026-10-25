@@ -21,9 +21,20 @@ const unit1 = LearningUnit.create(
   { id: "unit-math-1", curriculumId: "curriculum-math", title: "一次関数", difficulty: 3 },
   "Math",
 );
-const exam = new UpcomingExam("exam-1", "JuniorHigh2ndYearRegularExam", new Date("2026-11-15"), [
-  "unit-math-1",
-]);
+const midterm = UpcomingExam.create({
+  id: "exam-midterm",
+  title: "定期テスト",
+  examType: "JuniorHigh2ndYearRegularExam",
+  scheduledDate: new Date("2026-11-30T00:00:00+09:00"),
+  targetLearningUnitIds: ["unit-math-1", "unit-math-2"],
+});
+const kanjiTest3 = UpcomingExam.create({
+  id: "exam-kanji-test3",
+  title: "漢字テストIII",
+  examType: "JuniorHigh2ndYearRegularExam",
+  scheduledDate: new Date("2026-11-12T00:00:00+09:00"),
+  targetLearningUnitIds: [],
+});
 
 function fakeRepositories() {
   const progress = CultivationProgress.initiate(StudentId.fromString("student-1"), "Second");
@@ -50,8 +61,8 @@ function fakeRepositories() {
     },
   };
   const upcomingExamRepository: UpcomingExamRepository = {
-    async findByExamType() {
-      return exam;
+    async findAllByExamType() {
+      return [midterm, kanjiTest3];
     },
   };
   return {
@@ -64,7 +75,7 @@ function fakeRepositories() {
 }
 
 describe("GetCultivationOverview", () => {
-  it("assembles abilities, units and missions for the UI", async () => {
+  it("assembles abilities, units and exam goals sorted by date for the UI", async () => {
     const {
       progress,
       cultivationProgressRepository,
@@ -90,8 +101,23 @@ describe("GetCultivationOverview", () => {
     expect(overview.units).toEqual([
       expect.objectContaining({ id: "unit-math-1", subject: "Math", understandingRate: 100 }),
     ]);
-    expect(overview.upcomingExam?.id).toBe("exam-1");
-    expect(overview.dailyMission).toBeNull();
-    expect(overview.mockExamMission).toBeNull();
+    expect(overview.examGoals).toEqual([
+      {
+        id: "exam-kanji-test3",
+        title: "漢字テストIII",
+        scheduledDate: kanjiTest3.scheduledDate,
+        readiness: 0,
+        focusUnitId: null,
+        focusUnitTitle: null,
+      },
+      {
+        id: "exam-midterm",
+        title: "定期テスト",
+        scheduledDate: midterm.scheduledDate,
+        readiness: 50,
+        focusUnitId: "unit-math-2",
+        focusUnitTitle: null,
+      },
+    ]);
   });
 });

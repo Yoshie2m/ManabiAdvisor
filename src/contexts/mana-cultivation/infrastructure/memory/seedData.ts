@@ -373,25 +373,55 @@ export const learningUnits: LearningUnit[] = [
   ...preSocialLearningUnits,
 ];
 
+// 中2の予定（第21回ヒアリング）。日付は日本時間。漢字テストIIIは範囲がまだ登録されていない。
+const japanDate = (date: string) => new Date(`${date}T00:00:00+09:00`);
+
 export const upcomingExams: UpcomingExam[] = [
-  new UpcomingExam("exam-2nd-midterm", DEMO_EXAM_TYPE, new Date("2026-11-15"), [
-    "unit-english-l1-s1",
-    "unit-english-l1-s2",
-    "unit-english-l2-s1",
-    "unit-english-l2-s2",
-    "unit-math-c1-s1",
-    "unit-math-c1-s2",
-    "unit-math-c1-s3",
-    "unit-science-u4-c1-s1",
-    "unit-science-u4-c1-s2",
-    "unit-science-u4-c1-s3",
-    "unit-science-u4-c1-s4",
-    "unit-science-u4-c1-s5",
-    "unit-science-u4-c1-s6",
-    "unit-social-c4-s1",
-    "unit-social-c4-s2",
-    "unit-social-c4-s3",
-  ]),
+  UpcomingExam.create({
+    id: "exam-kanji-test1",
+    title: "漢字テストI",
+    examType: DEMO_EXAM_TYPE,
+    scheduledDate: japanDate("2026-11-04"),
+    targetLearningUnitIds: ["unit-japanese-kanji-test1-write", "unit-japanese-kanji-test1-read"],
+  }),
+  UpcomingExam.create({
+    id: "exam-kanji-test2",
+    title: "漢字テストII",
+    examType: DEMO_EXAM_TYPE,
+    scheduledDate: japanDate("2026-11-09"),
+    targetLearningUnitIds: ["unit-japanese-kanji-test2-write", "unit-japanese-kanji-test2-read"],
+  }),
+  UpcomingExam.create({
+    id: "exam-kanji-test3",
+    title: "漢字テストIII",
+    examType: DEMO_EXAM_TYPE,
+    scheduledDate: japanDate("2026-11-12"),
+    targetLearningUnitIds: [],
+  }),
+  UpcomingExam.create({
+    id: "exam-2nd-midterm",
+    title: "定期テスト",
+    examType: DEMO_EXAM_TYPE,
+    scheduledDate: japanDate("2026-11-30"),
+    targetLearningUnitIds: [
+      "unit-english-l1-s1",
+      "unit-english-l1-s2",
+      "unit-english-l2-s1",
+      "unit-english-l2-s2",
+      "unit-math-c1-s1",
+      "unit-math-c1-s2",
+      "unit-math-c1-s3",
+      "unit-science-u4-c1-s1",
+      "unit-science-u4-c1-s2",
+      "unit-science-u4-c1-s3",
+      "unit-science-u4-c1-s4",
+      "unit-science-u4-c1-s5",
+      "unit-science-u4-c1-s6",
+      "unit-social-c4-s1",
+      "unit-social-c4-s2",
+      "unit-social-c4-s3",
+    ],
+  }),
 ];
 
 // 漢字小テストI（第一回）の原本データ。書き（文中のカタカナ→漢字）と

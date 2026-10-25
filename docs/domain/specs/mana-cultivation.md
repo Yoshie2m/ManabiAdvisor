@@ -515,6 +515,46 @@ class CultivationProgress {
 - `CharacterCard.create`は空の名前、範囲外のレア度、1未満の図鑑番号を拒否する。`GelCost`は1未満の個数を拒否する。
 - `ExchangeGelsForCard`は交換後の進捗を保存し、カードや生徒が無ければ例外を投げる。
 
+## 意思決定の経緯（第21回ヒアリング: 中2の予定を目標カードで表示し、ミッションを廃止）
+
+ユーザーから「漢字テストIは11/4、漢字テストIIは11/9、漢字テストIIIは11/12、次の定期テストは11/30。デザインシステムのGoalCardを使い、中2の予定として大広間のバディのコメント欄の下に並べる。今出ている魔導評価への秒読み・デイリークエスト・予想問題クエストは削除する」という依頼を受けた。`GoalCard`は試験名・試験日（残り日数）・準備状態のメーター（0〜100%）・次のタスク1つを表示するカード。実装前にユーザーへ3点を確認し、以下の方針で合意済み:
+
+1. **準備状態**: テスト範囲の単元の理解度（`UnderstandingLevel.rate`）の平均。まだ解いていない単元は0%として数える。
+2. **次のタスク**: 範囲のうち理解度が一番低い単元（既存の`lowestUnderstandingRateFirstPolicy`）を「『単元名』を解く」と出し、タップするとその科目の魔導書庫へ進む。範囲が未登録（漢字テストIII）なら「テスト範囲の登録待ち」。
+3. **ミッション**: デイリークエスト・予想問題クエストは仕組みごと削除する（`Mission`、`CultivationProgress`のミッション関連の操作と保存項目、`GenerateDailyMission`・`OfferMockExamMission`）。必要になればgitの履歴から戻せる。
+
+### 実装
+
+**ドメイン層の変更**:
+- `UpcomingExam`に`title`（テスト名、空文字は不可）を追加し、`UpcomingExam.create(props)`で生成する。
+- 漢字テストIIIのように範囲がまだ登録されていない予定も持てるよう、「出題範囲は1つ以上」という不変条件を外す（範囲が空なら準備状態0%・次のタスクなし）。
+- 1つの`ExamType`に複数の予定を持てるようにし、`UpcomingExamRepository.findAllByExamType(examType)`に変える（旧`findByExamType`は1件のみ）。
+- 新しい仕様`ExamReadinessPolicy.assess(targetLearningUnitIds, understandingLevels)`が`{ readiness: number /* 0〜100の整数 */, focusUnitId: string | null }`を返す。
+- `CultivationProgress`からミッション関連（`assignDailyMission`・`offerMockExamMission`・`getCurrentDailyMission`・`getMockExamMission`、`reconstruct`の`currentDailyMission`／`currentMockExamMission`）を削除し、`Mission`も削除する。
+- `changeGrade`（第16回）の「ミッションを取り消す」処理も、ミッションが無くなるため削除する。
+
+**ユースケース層**: `GetCultivationOverview`は`dailyMission`／`mockExamMission`／`upcomingExam`の代わりに、学年の`ExamType`の予定を日付順に並べた`examGoals`（テスト名・試験日・準備状態・次のタスクの単元IDと単元名）を返す。`GenerateDailyMission`・`OfferMockExamMission`は削除する。
+
+**インフラ層**: `upcomingExams`は試験種別ではなく予定のIDをドキュメントIDにし（`upcomingExams/{id}`、`title`を追加）、`examType`で検索する。旧ドキュメント`upcomingExams/JuniorHigh2ndYearRegularExam`は削除する。`cultivationProgress`の`currentDailyMission`／`currentMockExamMission`は今後保存しない（読み込み時も無視）。
+
+**予定のデータ**（`JuniorHigh2ndYearRegularExam`、日本時間）:
+
+| ID | テスト名 | 日付 | 範囲 |
+| --- | --- | --- | --- |
+| `exam-kanji-test1` | 漢字テストI | 2026-11-04 | 漢字小テストI（書き・読み） |
+| `exam-kanji-test2` | 漢字テストII | 2026-11-09 | 漢字小テストII（書き・読み） |
+| `exam-kanji-test3` | 漢字テストIII | 2026-11-12 | 未登録 |
+| `exam-2nd-midterm` | 定期テスト | 2026-11-30 | 旧`exam-2nd-midterm`と同じ範囲 |
+
+**UI層**: デザインシステムの`GoalCard`を`src/components/ui/`に実装し、大広間のバディのコメント欄の下に、近い予定から縦に並べる。`ExamCountdown`（魔導評価への秒読み）・デイリークエスト・予想問題クエストのカードは削除する。
+
+### テストで守る不変条件
+
+- `UpcomingExam.create`は空のテスト名を拒否し、範囲が空の予定は許す。
+- `ExamReadinessPolicy`: 準備状態は範囲の単元の理解度の平均（四捨五入した整数）で、まだ解いていない単元は0%として数える。次のタスクは理解度が一番低い単元。範囲が空なら準備状態0・次のタスクなし（`null`）。
+- `CultivationProgress.changeGrade`は、学年を変えても能力値・理解度・ジェル・獲得カードを変えない（ミッションの取り消しは無くなる）。
+- `GetCultivationOverview`は学年の試験種別の予定だけを日付順に返し、それぞれに準備状態と次のタスク（単元名つき）を添える。
+
 ## 値オブジェクト
 
 ### ExamType
