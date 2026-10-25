@@ -44,3 +44,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local content workshop (photos and transcriptions stay local)
+/content-workshop/*
+!/content-workshop/README.md
