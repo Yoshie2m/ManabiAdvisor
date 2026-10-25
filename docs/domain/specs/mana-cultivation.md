@@ -399,6 +399,16 @@ class RecordQuizAttempts {
 - `LearningUnit.create`は`SocialStudies`の単元に`MultipleChoice`・`OneQuestionOneAnswer`を付けられる。
 - `Question.create`/`reconstruct`は`imageUrl`を省略すると`null`になり、指定すればその値を保持する。
 
+## 意思決定の経緯（第18回ヒアリング: 小6社会を分野単位にまとめる）
+
+第17回で問題集の単元ごと（9単元×2形式＝18ユニット）に登録したところ、ユーザーから「単元が細かすぎる」との指摘を受け、次のように分野単位へまとめ直した。
+
+1. **分野の区切り**: 問題集の単元番号で、地理＝1〜11、歴史＝12〜25、公民＝26〜30、総合＝31〜35とする。
+2. **ユニットの分け方**: 分野ごとに1つにまとめ、出題形式（4択／一問一答）でだけ分ける（例: 「地理（4択）」「地理（一問一答）」）。
+3. **今後の追加**: 歴史など未登録の単元は、単元番号つきのデータを追加すれば、番号の範囲から該当する分野のユニットに自動で入る。問題がまだ無い分野（公民・総合）は、空のユニットが修練場に並ばないよう、データを追加した時点でユニットを作る。
+
+ドメインモデルの変更は無く、`infrastructure/memory/preSocialSeedData.ts`のまとめ方だけを変えた（単元ごとのデータはそのまま残し、分野ごとに束ねてユニット・問題を作る）。学習ユニットIDは`unit-pre-social-{geography|history|civics|comprehensive}-{choice|recall}`。旧ユニット（`unit-pre-social-01-choice`等）と旧問題はFirestoreから削除する。
+
 ## 値オブジェクト
 
 ### ExamType

@@ -399,15 +399,38 @@ export const preSocialCurriculum = Curriculum.create({
   title: "小6社会 中学受験対策（コンプリーション）",
 });
 
-const choiceUnitId = (no: string) => `unit-pre-social-${no}-choice`;
-const recallUnitId = (no: string) => `unit-pre-social-${no}-recall`;
+// 問題集の単元番号で分野にまとめ、分野ごとに4択・一問一答の学習ユニットを1つずつ作る（第18回ヒアリング）。
+// 問題がまだ無い分野（公民・総合）はユニットを作らず、単元のデータを追加した時点で現れる。
+const PRE_SOCIAL_FIELDS = [
+  { key: "geography", title: "地理", firstUnitNo: 1, lastUnitNo: 11 },
+  { key: "history", title: "歴史", firstUnitNo: 12, lastUnitNo: 25 },
+  { key: "civics", title: "公民", firstUnitNo: 26, lastUnitNo: 30 },
+  { key: "comprehensive", title: "総合", firstUnitNo: 31, lastUnitNo: 35 },
+] as const;
 
-export const preSocialLearningUnits: LearningUnit[] = PRE_SOCIAL_UNITS.flatMap((unit) => [
+const fieldOf = (unit: PreSocialUnit) => {
+  const no = Number(unit.no);
+  const field = PRE_SOCIAL_FIELDS.find((f) => f.firstUnitNo <= no && no <= f.lastUnitNo);
+  if (!field) {
+    throw new Error(`No social studies field covers unit ${unit.no}`);
+  }
+  return field;
+};
+
+const fieldsWithUnits = PRE_SOCIAL_FIELDS.map((field) => ({
+  ...field,
+  units: PRE_SOCIAL_UNITS.filter((unit) => fieldOf(unit).key === field.key),
+})).filter((field) => field.units.length > 0);
+
+const choiceUnitId = (fieldKey: string) => `unit-pre-social-${fieldKey}-choice`;
+const recallUnitId = (fieldKey: string) => `unit-pre-social-${fieldKey}-recall`;
+
+export const preSocialLearningUnits: LearningUnit[] = fieldsWithUnits.flatMap((field) => [
   LearningUnit.create(
     {
-      id: choiceUnitId(unit.no),
+      id: choiceUnitId(field.key),
       curriculumId: preSocialCurriculum.id,
-      title: `${unit.title}（4択）`,
+      title: `${field.title}（4択）`,
       difficulty: 2,
       questionType: "MultipleChoice",
     },
@@ -415,9 +438,9 @@ export const preSocialLearningUnits: LearningUnit[] = PRE_SOCIAL_UNITS.flatMap((
   ),
   LearningUnit.create(
     {
-      id: recallUnitId(unit.no),
+      id: recallUnitId(field.key),
       curriculumId: preSocialCurriculum.id,
-      title: `${unit.title}（一問一答）`,
+      title: `${field.title}（一問一答）`,
       difficulty: 3,
       questionType: "OneQuestionOneAnswer",
     },
@@ -436,7 +459,13 @@ const toQuestions = (learningUnitId: string, items: PreSocialItem[]): Question[]
     }),
   );
 
-export const preSocialQuestions: Question[] = PRE_SOCIAL_UNITS.flatMap((unit) => [
-  ...toQuestions(choiceUnitId(unit.no), unit.fillIns),
-  ...toQuestions(recallUnitId(unit.no), [...unit.fillIns, ...unit.descriptives]),
+export const preSocialQuestions: Question[] = fieldsWithUnits.flatMap((field) => [
+  ...toQuestions(
+    choiceUnitId(field.key),
+    field.units.flatMap((unit) => unit.fillIns),
+  ),
+  ...toQuestions(
+    recallUnitId(field.key),
+    field.units.flatMap((unit) => [...unit.fillIns, ...unit.descriptives]),
+  ),
 ]);

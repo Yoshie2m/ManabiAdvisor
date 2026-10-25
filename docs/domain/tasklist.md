@@ -384,3 +384,11 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/app/academy/page.tsx`: `MultipleChoice`→4択画面、`OneQuestionOneAnswer`→セルフ採点画面に振り分け。両画面で`imageUrl`があれば画像を表示。画面の指示文を出題形式ごとに切り替え
 - [x] `npm run seed`でFirestoreへ再投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（30ファイル・145テスト）
+
+## 28. 魔力修練コンテキスト（小6社会を分野単位にまとめる）✅実装済み
+
+ユーザーから「単元が細かすぎる」との指摘を受け、地理（単元1〜11）・歴史（12〜25）・公民（26〜30）・総合（31〜35）の分野単位にまとめ、出題形式（4択／一問一答）でだけ分けるよう変更。`specs/mana-cultivation.md`「意思決定の経緯（第18回ヒアリング）」節を参照。
+
+- [x] `infrastructure/memory/preSocialSeedData.ts`: 単元番号から分野を決め、分野ごとに4択・一問一答のユニットを作る（問題の無い分野はユニットを作らない）。現在は地理（4択162問・一問一答182問）と歴史（4択102問・一問一答118問）の4ユニット
+- [x] `npx tsc --noEmit` / `npm test`（30ファイル・145テスト） / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+- [x] `npm run seed`でFirestoreへ再投入し、旧ユニット18件・旧問題564件を削除（一時的に書き込みを許可→作業後に元へ戻してデプロイ）。削除後、小6社会のユニットが新しい4件だけであることをFirestoreで確認
