@@ -3,6 +3,7 @@ import type { ExamType } from "../../domain/models/ExamType";
 import { LearningUnit } from "../../domain/models/LearningUnit";
 import { Question } from "../../domain/models/Question";
 import { UpcomingExam } from "../../domain/models/UpcomingExam";
+import { englishTextbookLearningUnits, englishTextbookQuestions } from "./englishTextbookSeedData";
 import { preSocialCurriculum, preSocialLearningUnits, preSocialQuestions } from "./preSocialSeedData";
 
 // 動作確認用の仮コンテンツ。本来はFirestoreのコレクション/Cloud Storageに格納する
@@ -104,28 +105,7 @@ export const learningUnits: LearningUnit[] = [
     },
     "English",
   ),
-  LearningUnit.create(
-    {
-      id: "unit-english-l2-s2",
-      curriculumId: "curriculum-english",
-      title: "Lesson 2 Scene 2: 接続詞がつくる副詞節 (when / because / if / though)",
-      difficulty: 3,
-    },
-    "English",
-  ),
-  LearningUnit.create(
-    { id: "unit-english-l3-s1", curriculumId: "curriculum-english", title: "Lesson 3 Scene 1: 比較 (as...as / 比較級+than)", difficulty: 2 },
-    "English",
-  ),
-  LearningUnit.create(
-    {
-      id: "unit-english-l3-s2",
-      curriculumId: "curriculum-english",
-      title: "Lesson 3 Scene 2: 比較級の変化形 (er / more・不規則変化)",
-      difficulty: 3,
-    },
-    "English",
-  ),
+  ...englishTextbookLearningUnits,
   LearningUnit.create(
     { id: "unit-english-l4-s1", curriculumId: "curriculum-english", title: "Lesson 4 Scene 1: 最上級の表現 (the+最上級)", difficulty: 2 },
     "English",
@@ -799,4 +779,5 @@ export const questions: Question[] = [
   ...englishVocab1Questions,
   ...lesson2Scene1PracticeQuestions,
   ...preSocialQuestions,
+  ...englishTextbookQuestions,
 ];

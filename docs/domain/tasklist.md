@@ -466,3 +466,13 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `FirebaseCultivationProgressRepository`: `missedQuestions`の読み書き
 - [x] `src/stores/useAcademyStore.ts`・`src/app/academy/page.tsx`: 解答に問題IDを付けて送る。幻影の塔に「間違えた漢字」と解き直し画面（解き直し中の単元は全問正解で一覧が空になっても結果表示まで残す）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（38ファイル・209テスト）
+
+## 34. 魔力修練コンテキスト（中2英語 Lesson 2・3 の教科書内容の登録）✅実装済み
+
+`specs/mana-cultivation.md`「意思決定の経緯（第23回ヒアリング）」節を参照。ドメインモデルの変更なし。
+
+- [x] `infrastructure/memory/englishTextbookSeedData.ts`: Lesson 2 Scene 2〜Lesson 3 Scene 3 の文法単元（読み物＋音声）5件と、Lookの並べ替え単元5件（計32問）
+- [x] `seedData.ts`: 仮置きの`unit-english-l2-s2`・`l3-s1`・`l3-s2`を教科書の内容に置き換え、`l2-s3`・`l3-s3`を追加
+- [x] gTTSで会話文の音声5本を生成し`public/audio/`へ配置（生成スクリプトは一時ファイル）
+- [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認

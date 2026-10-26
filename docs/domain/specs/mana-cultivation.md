@@ -594,6 +594,16 @@ class CultivationProgress {
 - 単元がカリキュラムに属さない場合は例外で、一覧も変わらない。
 - `reconstruct`は保存された一覧を復元する。
 
+## 意思決定の経緯（第23回ヒアリング: 中2英語 Lesson 2・3 の教科書内容の登録）
+
+ユーザーから、中2英語の教科書 Lesson 2・3 の写真（`content-workshop/output/eng2-*`）を「読み物」と「Lookの並べ替え」で登録するよう依頼を受けた（出題形式の案として、読み物／Lookの並べ替え／Practiceの並べ替え（答えはClaude補足）／Speakの一問一答を提示し、ユーザーが前の2つを選んだ）。
+
+- **単元の構成**: 仮置きだった英語の単元（1 Lesson＝2 Scene）を、教科書の実際の構成（1 Lesson＝3 Scene）に合わせる。既存のID（`unit-english-l2-s2`・`l3-s1`・`l3-s2`）はそのまま使ってタイトルを教科書の文法項目に直し、`unit-english-l2-s3`・`l3-s3`を追加した。
+- **読み物**: 各Sceneの文法単元の`referenceText`に、場面説明・会話文・Checkの文法説明をまとめる。会話文の英語のセリフだけをgTTSで読み上げた音声を`public/audio/lesson{2,3}-scene{n}.mp3`に置き、`referenceAudioUrl`に設定した（第15回と同じ手順・暫定運用）。
+- **Lookの並べ替え**: 各Sceneに`PassageTranslationToEnglish`の練習単元（`unit-english-lX-sY-practice`）を置き、Lookの例文を単語の並べ替えで作らせる（Lesson 2 Scene 1と同じ画面）。正解は教科書のLookそのもの。問題文の日本語訳はClaudeが付けた。Lesson 2 Scene 1は登録済みの例文練習3問が教科書のLookと同じなので、そのまま使う。
+- ドメインモデルの変更は無い（既存の`LearningUnit.referenceText`／`referenceAudioUrl`と`PassageTranslationToEnglish`を使う）。データは`infrastructure/memory/englishTextbookSeedData.ts`。
+- 定期テストの範囲（`exam-2nd-midterm`）は変更していない。
+
 ## 値オブジェクト
 
 ### ExamType
