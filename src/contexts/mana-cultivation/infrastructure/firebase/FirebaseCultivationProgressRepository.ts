@@ -21,6 +21,8 @@ type CultivationProgressDocument = {
   manaGels?: Partial<Record<Subject, number>>;
   // 第20回ヒアリングで追加。それ以前のドキュメントには無いため、読み込み時は空として扱う。
   acquiredCardIds?: string[];
+  // 第22回ヒアリングで追加（問題ID→単元ID）。無ければ空として扱う。
+  missedQuestions?: Record<string, string>;
 };
 
 export class FirebaseCultivationProgressRepository implements CultivationProgressRepository {
@@ -48,6 +50,7 @@ export class FirebaseCultivationProgressRepository implements CultivationProgres
       understandingLevels,
       manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, data.manaGels?.[subject] ?? 0)])),
       acquiredCardIds: new Set(data.acquiredCardIds ?? []),
+      missedQuestions: new Map(Object.entries(data.missedQuestions ?? {})),
     });
   }
 
@@ -69,6 +72,7 @@ export class FirebaseCultivationProgressRepository implements CultivationProgres
       understandingLevels,
       manaGels: Object.fromEntries(SUBJECTS.map((subject) => [subject, progress.getManaGel(subject).count])),
       acquiredCardIds: [...progress.getAcquiredCardIds()],
+      missedQuestions: Object.fromEntries(progress.getMissedQuestions()),
     };
 
     await setDoc(doc(firestore, COLLECTION, progress.studentId.toString()), data);

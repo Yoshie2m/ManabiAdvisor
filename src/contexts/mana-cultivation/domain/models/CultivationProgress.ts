@@ -14,6 +14,8 @@ const LEARNING_UNIT_COMPLETION_GAIN = 5;
 export class CultivationProgress {
   private readonly understandingLevels = new Map<string, UnderstandingLevel>();
   private readonly acquiredCardIds = new Set<string>();
+  // 間違えたままの問題（問題ID→単元ID）。不正解で入り、1回正解すれば消える（第22回ヒアリング）。
+  private readonly missedQuestions = new Map<string, string>();
 
   private constructor(
     readonly studentId: StudentId,
@@ -48,6 +50,7 @@ export class CultivationProgress {
     understandingLevels: ReadonlyMap<string, UnderstandingLevel>;
     manaGels: ReadonlyMap<Subject, ManaGel>;
     acquiredCardIds: ReadonlySet<string>;
+    missedQuestions: ReadonlyMap<string, string>;
   }): CultivationProgress {
     const progress = new CultivationProgress(
       params.studentId,
@@ -60,6 +63,9 @@ export class CultivationProgress {
     }
     for (const cardId of params.acquiredCardIds) {
       progress.acquiredCardIds.add(cardId);
+    }
+    for (const [questionId, learningUnitId] of params.missedQuestions) {
+      progress.missedQuestions.set(questionId, learningUnitId);
     }
     return progress;
   }
@@ -116,7 +122,12 @@ export class CultivationProgress {
   }
 
   // 正解なら、理解度の記録に加えてその単元の科目の魔力ジェルを1個増やす。
-  recordAttempt(curriculum: Curriculum, learningUnit: LearningUnit, isCorrect: boolean): UnderstandingLevel {
+  recordAttempt(
+    curriculum: Curriculum,
+    learningUnit: LearningUnit,
+    questionId: string,
+    isCorrect: boolean,
+  ): UnderstandingLevel {
     if (learningUnit.curriculumId !== curriculum.id) {
       throw new Error("LearningUnit does not belong to the given Curriculum");
     }
@@ -124,7 +135,20 @@ export class CultivationProgress {
     this.understandingLevels.set(learningUnit.id, next);
     if (isCorrect) {
       this.manaGels.set(curriculum.subject, this.getManaGel(curriculum.subject).add(1));
+      this.missedQuestions.delete(questionId);
+    } else {
+      this.missedQuestions.set(questionId, learningUnit.id);
     }
     return next;
+  }
+
+  getMissedQuestionIds(learningUnitId: string): string[] {
+    return [...this.missedQuestions]
+      .filter(([, unitId]) => unitId === learningUnitId)
+      .map(([questionId]) => questionId);
+  }
+
+  getMissedQuestions(): ReadonlyMap<string, string> {
+    return this.missedQuestions;
   }
 }

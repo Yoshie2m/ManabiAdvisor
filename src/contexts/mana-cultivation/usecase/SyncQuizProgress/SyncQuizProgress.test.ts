@@ -86,7 +86,7 @@ describe("SyncQuizProgress", () => {
     const result = await usecase.execute(
       studentId,
       unit.id,
-      [{ isCorrect: true }, { isCorrect: false }, { isCorrect: true }],
+      [{ questionId: "q-1", isCorrect: true }, { questionId: "q-2", isCorrect: false }, { questionId: "q-3", isCorrect: true }],
       5,
     );
 
@@ -96,6 +96,7 @@ describe("SyncQuizProgress", () => {
     expect(understanding?.totalCount).toBe(3);
     expect(understanding?.correctCount).toBe(2);
     expect(repositories.progresses.get("student-1")?.getManaGel("Japanese").count).toBe(2);
+    expect(repositories.progresses.get("student-1")?.getMissedQuestionIds(unit.id)).toEqual(["q-2"]);
     expect(repositories.sessions.get(`student-1:${unit.id}`)?.currentIndex).toBe(3);
   });
 
@@ -114,7 +115,7 @@ describe("SyncQuizProgress", () => {
       repositories.learningUnitRepository,
     );
 
-    const result = await usecase.execute(studentId, unit.id, [{ isCorrect: true }], 5);
+    const result = await usecase.execute(studentId, unit.id, [{ questionId: "q-4", isCorrect: true }], 5);
 
     expect(result.session?.currentIndex).toBe(3);
   });
@@ -134,7 +135,7 @@ describe("SyncQuizProgress", () => {
     const result = await usecase.execute(
       studentId,
       unit.id,
-      [{ isCorrect: true }, { isCorrect: true }],
+      [{ questionId: "q-5", isCorrect: true }, { questionId: "q-6", isCorrect: true }],
       2,
     );
 
@@ -153,7 +154,7 @@ describe("SyncQuizProgress", () => {
     );
 
     await expect(
-      usecase.execute(StudentId.fromString("student-1"), unit.id, [{ isCorrect: true }], 5),
+      usecase.execute(StudentId.fromString("student-1"), unit.id, [{ questionId: "q-7", isCorrect: true }], 5),
     ).rejects.toThrow();
   });
 });

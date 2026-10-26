@@ -5,7 +5,7 @@ import type { CurriculumRepository } from "../../domain/repositories/CurriculumR
 import type { LearningUnitRepository } from "../../domain/repositories/LearningUnitRepository";
 import type { QuizSessionRepository } from "../../domain/repositories/QuizSessionRepository";
 
-export type QuizAnswerResult = { isCorrect: boolean };
+export type QuizAnswerResult = { questionId: string; isCorrect: boolean };
 
 export type SyncQuizProgressResult = { session: QuizSession | null };
 
@@ -39,7 +39,7 @@ export class SyncQuizProgress {
       throw new Error(`Curriculum not found: ${learningUnit.curriculumId}`);
     }
     for (const result of results) {
-      progress.recordAttempt(curriculum, learningUnit, result.isCorrect);
+      progress.recordAttempt(curriculum, learningUnit, result.questionId, result.isCorrect);
     }
 
     let session = await this.quizSessionRepository.find(studentId, learningUnitId);

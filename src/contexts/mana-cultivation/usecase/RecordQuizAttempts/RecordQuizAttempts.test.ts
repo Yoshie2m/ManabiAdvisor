@@ -70,22 +70,23 @@ describe("RecordQuizAttempts", () => {
     repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
 
     await usecaseFor(repositories).execute(studentId, unit.id, [
-      { isCorrect: true },
-      { isCorrect: false },
-      { isCorrect: true },
+      { questionId: "q-1", isCorrect: true },
+      { questionId: "q-2", isCorrect: false },
+      { questionId: "q-3", isCorrect: true },
     ]);
 
     const progress = repositories.progresses.get("student-1");
     expect(progress?.getUnderstanding(unit.id).totalCount).toBe(3);
     expect(progress?.getUnderstanding(unit.id).correctCount).toBe(2);
     expect(progress?.getManaGel("Japanese").count).toBe(2);
+    expect(progress?.getMissedQuestionIds(unit.id)).toEqual(["q-2"]);
   });
 
   it("throws when the student has not started cultivation yet", async () => {
     const repositories = fakeRepositories();
 
     await expect(
-      usecaseFor(repositories).execute(StudentId.fromString("student-1"), unit.id, [{ isCorrect: true }]),
+      usecaseFor(repositories).execute(StudentId.fromString("student-1"), unit.id, [{ questionId: "q-4", isCorrect: true }]),
     ).rejects.toThrow();
   });
 
@@ -94,6 +95,6 @@ describe("RecordQuizAttempts", () => {
     const studentId = StudentId.fromString("student-1");
     repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
 
-    await expect(usecaseFor(repositories).execute(studentId, "unit-missing", [{ isCorrect: true }])).rejects.toThrow();
+    await expect(usecaseFor(repositories).execute(studentId, "unit-missing", [{ questionId: "q-5", isCorrect: true }])).rejects.toThrow();
   });
 });

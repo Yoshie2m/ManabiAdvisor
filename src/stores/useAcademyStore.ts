@@ -140,7 +140,7 @@ type AcademyState = {
   refreshBuddyCheer: () => Promise<void>;
   changeGrade: (grade: Grade) => Promise<void>;
   refreshOverview: () => Promise<void>;
-  recordAttemptFor: (learningUnitId: string, isCorrect: boolean) => Promise<void>;
+  recordAttemptFor: (learningUnitId: string, questionId: string, isCorrect: boolean) => Promise<void>;
   fetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
   checkQuizSession: (learningUnitId: string) => Promise<QuizSessionView | null>;
   startQuizSession: (learningUnitId: string, totalQuestions: number) => Promise<QuizSessionView>;
@@ -315,10 +315,10 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
     }
   },
 
-  recordAttemptFor: async (learningUnitId, isCorrect) => {
+  recordAttemptFor: async (learningUnitId, questionId, isCorrect) => {
     try {
       const studentId = currentStudentId(get().authUid);
-      await recordAttempt.execute(studentId, learningUnitId, isCorrect);
+      await recordAttempt.execute(studentId, learningUnitId, questionId, isCorrect);
       await get().refreshOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });

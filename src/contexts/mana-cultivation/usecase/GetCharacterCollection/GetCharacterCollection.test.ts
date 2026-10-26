@@ -36,6 +36,7 @@ describe("GetCharacterCollection", () => {
       understandingLevels: new Map(),
       manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, subject === "Math" ? 30 : 5)])),
       acquiredCardIds: new Set(["card-b"]),
+      missedQuestions: new Map(),
     });
     const progressRepository: CultivationProgressRepository = {
       async findByStudentId() {

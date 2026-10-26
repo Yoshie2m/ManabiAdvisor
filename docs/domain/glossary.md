@@ -54,6 +54,7 @@
 | **CurriculumRepository（カリキュラムリポジトリ）** | リポジトリ（インターフェース） | `ExamType` に応じた `Curriculum` 一覧の取得を抽象化する境界。 | `domain/repositories/CurriculumRepository.ts` |
 | **SubjectAbility（科目別能力）** | 値オブジェクト | 生徒が持つ、ある1科目についての習熟度を表す不変オブジェクト。`subject` と `level`（0〜100）からなる。`increase(amount)` は上限100でクランプした新しい `SubjectAbility` を返す。 | `domain/models/SubjectAbility.ts` |
 | **ManaGel（魔力ジェル）** | 値オブジェクト | 勉強をこなすと貯まる、科目ごとのポイント。1問正解するごとに、その単元の科目のジェルが1個増える（やり直しの正解も含む）。科目ごとに種類（色）が異なり、言霊（国語）＝紅、数秘（数学）＝青、異界語（英語）＝緑、錬金（理科）＝雷の金色、地誌・歴史（社会）＝琥珀の茶。`subject`と`count`（0以上の整数、上限なし）からなる。`SubjectAbility`とは別物。キャラクターカードとの交換に使え、交換すると減る（0個を下回らない。第19回・第20回ヒアリング）。 | `domain/models/ManaGel.ts` |
+| **間違えたままの問題（missedQuestions）** | ドメイン概念 | `CultivationProgress`が持つ、不正解のまま正解していない問題の一覧（問題ID→単元ID）。不正解で入り、1回正解すれば消える。全科目共通の記録で、幻影の塔には今は漢字（書き・読み）の分を並べ、間違えた問題だけを元の形式で解き直せる（第22回ヒアリング）。 | `domain/models/CultivationProgress.ts` |
 | **CharacterCard（キャラクターカード）** | エンティティ | 「秘宝の栞」の図鑑に載るカード。図鑑番号・名前・肩書き・セリフ・レア度（0〜5）・属性（教科）・全身イラスト・交換に必要なジェル（`GelCost`）を持つ。ステータス・スキルは持たない。コンテンツ本体なのでFirestoreの`characterCards`に格納する（第20回ヒアリング）。 | `domain/models/CharacterCard.ts` |
 | **GelCost（交換に必要なジェル）** | 値オブジェクト | カードの交換に必要な、ある科目のジェルの個数（1以上の整数）。 | `domain/models/GelCost.ts` |
 | **秘宝の栞** | UI（タブ） | 修練場の一番右端のタブ。キャラクターカードの図鑑（獲得済み・未獲得）を表示し、ジェルでカードを交換する。 | `src/app/academy/page.tsx` |

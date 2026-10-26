@@ -81,8 +81,8 @@ describe("CultivationProgress", () => {
   describe("recordAttempt", () => {
     it("updates only the targeted unit's understanding level", () => {
       const progress = initiate();
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), false);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", false);
 
       const level = progress.getUnderstanding("unit-1");
       expect(level.correctCount).toBe(1);
@@ -109,7 +109,7 @@ describe("CultivationProgress", () => {
     it("a correct attempt adds 1 gel of the unit's subject only", () => {
       const progress = initiate();
 
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", true);
 
       expect(progress.getManaGel("Math").count).toBe(1);
       for (const subject of SUBJECTS.filter((s) => s !== "Math")) {
@@ -120,7 +120,7 @@ describe("CultivationProgress", () => {
     it("an incorrect attempt adds no gels", () => {
       const progress = initiate();
 
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), false);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", false);
 
       for (const subject of SUBJECTS) {
         expect(progress.getManaGel(subject).count).toBe(0);
@@ -130,7 +130,7 @@ describe("CultivationProgress", () => {
     it("keeps adding a gel every time the same unit is answered correctly", () => {
       const progress = initiate();
       for (let i = 0; i < 3; i += 1) {
-        progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+        progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", true);
       }
 
       expect(progress.getManaGel("Math").count).toBe(3);
@@ -139,11 +139,51 @@ describe("CultivationProgress", () => {
     it("throws and changes nothing when the unit does not belong to the curriculum", () => {
       const progress = initiate();
 
-      expect(() => progress.recordAttempt(englishCurriculum, mathUnit("unit-1"), true)).toThrow();
+      expect(() => progress.recordAttempt(englishCurriculum, mathUnit("unit-1"), "q-unit-1", true)).toThrow();
       expect(progress.getUnderstanding("unit-1").totalCount).toBe(0);
+      expect(progress.getMissedQuestionIds("unit-1")).toEqual([]);
       for (const subject of SUBJECTS) {
         expect(progress.getManaGel(subject).count).toBe(0);
       }
+    });
+  });
+
+  describe("missed questions", () => {
+    it("adds a question to its unit's missed list when answered incorrectly, only once", () => {
+      const progress = initiate();
+
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-1", false);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-1", false);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-2", true);
+
+      expect(progress.getMissedQuestionIds("unit-1")).toEqual(["q-1"]);
+    });
+
+    it("removes a missed question once it is answered correctly", () => {
+      const progress = initiate();
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-1", false);
+
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-1", true);
+
+      expect(progress.getMissedQuestionIds("unit-1")).toEqual([]);
+    });
+
+    it("keeps missed questions separated by unit", () => {
+      const progress = initiate();
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-1", false);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-2"), "q-9", false);
+
+      expect(progress.getMissedQuestionIds("unit-1")).toEqual(["q-1"]);
+      expect(progress.getMissedQuestionIds("unit-2")).toEqual(["q-9"]);
+    });
+
+    it("still records understanding and gels as before", () => {
+      const progress = initiate();
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-1", false);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-1", true);
+
+      expect(progress.getUnderstanding("unit-1").totalCount).toBe(2);
+      expect(progress.getManaGel("Math").count).toBe(1);
     });
   });
 
@@ -163,9 +203,9 @@ describe("CultivationProgress", () => {
 
     function progressWithMathGels(count: number) {
       const progress = initiate();
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", true);
       for (let i = 1; i < count; i += 1) {
-        progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+        progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", true);
       }
       return progress;
     }
@@ -223,8 +263,8 @@ describe("CultivationProgress", () => {
     function progressWithHistory() {
       const progress = initiate();
       progress.completeLearningUnit(mathCurriculum, mathUnit("unit-1"));
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", true);
       progress.exchangeForCard(card);
       return progress;
     }
@@ -260,7 +300,7 @@ describe("CultivationProgress", () => {
   describe("getUnderstandingLevels", () => {
     it("exposes every recorded understanding level, keyed by learningUnitId", () => {
       const progress = initiate();
-      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), true);
+      progress.recordAttempt(mathCurriculum, mathUnit("unit-1"), "q-unit-1", true);
 
       const levels = progress.getUnderstandingLevels();
 
@@ -282,6 +322,7 @@ describe("CultivationProgress", () => {
         understandingLevels,
         manaGels: new Map(SUBJECTS.map((subject) => [subject, ManaGel.create(subject, 7)])),
         acquiredCardIds: new Set(["card-amou"]),
+        missedQuestions: new Map([["q-1", "unit-1"]]),
       });
 
       expect(progress.studentId).toBe(studentId);
@@ -290,6 +331,7 @@ describe("CultivationProgress", () => {
       expect(progress.getUnderstanding("unit-1").correctCount).toBe(3);
       expect(progress.getManaGel("Japanese").count).toBe(7);
       expect(progress.hasAcquiredCard("card-amou")).toBe(true);
+      expect(progress.getMissedQuestionIds("unit-1")).toEqual(["q-1"]);
     });
   });
 });

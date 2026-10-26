@@ -455,3 +455,14 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `src/stores/useAcademyStore.ts`・`src/app/academy/page.tsx`: 大広間をバディ＋目標カードに。秒読み・クエストのカードと関連アクションを削除。次のタスクから魔導書庫の科目へ
 - [x] `npm run seed`でFirestoreへ投入し、旧`upcomingExams/JuniorHigh2ndYearRegularExam`を削除（一時的に書き込みを許可→元へ戻してデプロイ）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（38ファイル・205テスト。ミッション関連のテストを削除したため件数は減少）
+
+## 33. 魔力修練コンテキスト（間違えた問題の記録と解き直し）✅実装済み
+
+ユーザーから「苦手撃破で、間違えた漢字を1問ずつ抜粋し、間違えた問題だけをチェックしたい」と依頼を受け、範囲・消える条件・解き直しの形式の3点をヒアリング。`specs/mana-cultivation.md`「意思決定の経緯（第22回ヒアリング）」節を参照。
+
+- [x] `domain/models/CultivationProgress.test.ts` → `CultivationProgress.ts`: `recordAttempt(curriculum, learningUnit, questionId, isCorrect)`・`getMissedQuestionIds`・`reconstruct`の`missedQuestions`
+- [x] `QuizAnswerResult`に`questionId`、`RecordAttempt`・`RecordQuizAttempts`・`SyncQuizProgress`（テスト更新）
+- [x] `GetCultivationOverview`: 単元ごとの`missedQuestionIds`
+- [x] `FirebaseCultivationProgressRepository`: `missedQuestions`の読み書き
+- [x] `src/stores/useAcademyStore.ts`・`src/app/academy/page.tsx`: 解答に問題IDを付けて送る。幻影の塔に「間違えた漢字」と解き直し画面（解き直し中の単元は全問正解で一覧が空になっても結果表示まで残す）
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認（38ファイル・209テスト）

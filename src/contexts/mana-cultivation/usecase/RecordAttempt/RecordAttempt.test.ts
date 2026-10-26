@@ -63,7 +63,7 @@ describe("RecordAttempt", () => {
     const studentId = StudentId.fromString("student-1");
     repositories.progresses.set(studentId.toString(), CultivationProgress.initiate(studentId, "Second"));
 
-    const level = await usecaseFor(repositories).execute(studentId, "unit-1", true);
+    const level = await usecaseFor(repositories).execute(studentId, "unit-1", "q-1", true);
 
     expect(level.correctCount).toBe(1);
     expect(level.totalCount).toBe(1);
@@ -74,6 +74,6 @@ describe("RecordAttempt", () => {
   it("throws when the student has not started cultivation yet", async () => {
     const repositories = fakeRepositories();
 
-    await expect(usecaseFor(repositories).execute(StudentId.fromString("student-1"), "unit-1", true)).rejects.toThrow();
+    await expect(usecaseFor(repositories).execute(StudentId.fromString("student-1"), "unit-1", "q-1", true)).rejects.toThrow();
   });
 });

@@ -28,7 +28,7 @@ export class RecordQuizAttempts {
       throw new Error(`Curriculum not found: ${learningUnit.curriculumId}`);
     }
     for (const result of results) {
-      progress.recordAttempt(curriculum, learningUnit, result.isCorrect);
+      progress.recordAttempt(curriculum, learningUnit, result.questionId, result.isCorrect);
     }
     await this.cultivationProgressRepository.save(progress);
   }

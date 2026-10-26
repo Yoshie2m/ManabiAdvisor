@@ -296,7 +296,7 @@ function QuizTakingPanel({ unit, onClose }: { unit: LearningUnitView; onClose: (
 
     const question = questions[displayedIndex];
     const isCorrect = answerCorrectnessPolicy.isSatisfiedBy(inputValue, question.answer);
-    pendingResultsRef.current.push({ isCorrect });
+    pendingResultsRef.current.push({ questionId: question.id, isCorrect });
     setFeedback({ isCorrect, correctAnswer: question.answer });
     setResultCount((prev) => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
   }
@@ -665,7 +665,7 @@ function useSetBasedQuiz(unit: LearningUnitView, options: { onQuestionChange?: (
     hasAnsweredCurrentRef.current = true;
 
     const question = questions[displayedIndex];
-    pendingResultsRef.current.push({ isCorrect });
+    pendingResultsRef.current.push({ questionId: question.id, isCorrect });
     setSetReview((prev) => [...prev, { question, isCorrect }]);
     setOverallCount((prev) => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
 
@@ -719,7 +719,7 @@ function useSetBasedQuiz(unit: LearningUnitView, options: { onQuestionChange?: (
   async function gradeBonus(isCorrect: boolean) {
     if (hasAnsweredCurrentRef.current) return;
     hasAnsweredCurrentRef.current = true;
-    bonusResultsRef.current.push({ isCorrect });
+    bonusResultsRef.current.push({ questionId: bonusQueue[bonusIndex].id, isCorrect });
 
     const nextIndex = bonusIndex + 1;
     if (nextIndex >= bonusQueue.length) {
@@ -1400,7 +1400,7 @@ function LearningUnitRow({
   onFetchQuestions,
 }: {
   unit: LearningUnitView;
-  onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
+  onRecordAttempt: (learningUnitId: string, questionId: string, isCorrect: boolean) => void;
   onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
 }) {
   const [questions, setQuestions] = useState<QuestionView[] | null>(null);
@@ -1518,7 +1518,7 @@ function LearningUnitRow({
                 explanation={question.explanation ?? undefined}
                 number={index + 1}
                 total={questions.length}
-                onGrade={(grade) => onRecordAttempt(unit.id, grade === "correct")}
+                onGrade={(grade) => onRecordAttempt(unit.id, question.id, grade === "correct")}
               />
             ))
           )}
@@ -1643,7 +1643,7 @@ function LibraryTab({
   overview: CultivationOverview;
   selectedSubject: Subject | null;
   onSelectSubject: (subject: Subject | null) => void;
-  onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
+  onRecordAttempt: (learningUnitId: string, questionId: string, isCorrect: boolean) => void;
   onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
 }) {
   if (!selectedSubject) {
@@ -1823,6 +1823,180 @@ function RecordsTab() {
   );
 }
 
+const MISSED_REVIEW_QUESTION_TYPES: readonly QuestionType[] = ["KanjiWriting", "KanjiReading"];
+
+// 間違えた問題だけを元の形式で解き直す。記録は「やり直し」と同じく単元の進み具合を変えない（第22回ヒアリング）。
+function MissedReviewPanel({
+  unit,
+  questions,
+  allQuestions,
+  onClose,
+}: {
+  unit: LearningUnitView;
+  questions: QuestionView[];
+  allQuestions: QuestionView[];
+  onClose: () => void;
+}) {
+  const recordQuizAttemptsFor = useAcademyStore((state) => state.recordQuizAttemptsFor);
+  const questionType = unit.questionType as QuestionType;
+  const [index, setIndex] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [results, setResults] = useState<QuizAnswerResult[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const question = questions[index];
+  const choices = useMemo(
+    () => (question && questionType === "KanjiReading" ? buildChoices(allQuestions, question) : []),
+    [allQuestions, question, questionType],
+  );
+  const isFinished = index >= questions.length;
+
+  async function record(isCorrect: boolean) {
+    const nextResults = [...results, { questionId: question.id, isCorrect }];
+    setResults(nextResults);
+    setRevealed(false);
+    setSelected(null);
+    if (index + 1 >= questions.length) {
+      setIsSaving(true);
+      try {
+        await recordQuizAttemptsFor(unit.id, nextResults);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+    setIndex(index + 1);
+  }
+
+  if (isFinished) {
+    const correct = results.filter((result) => result.isCorrect).length;
+    return (
+      <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 bg-house-primary/5 p-4 text-sm">
+        <p className="font-semibold">
+          {results.length}問中 {correct}問 正解！
+        </p>
+        <p className="text-xs opacity-80">
+          {correct === results.length ? "間違えた問題をすべて撃破しました。" : "正解した問題は一覧から消えました。"}
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isSaving}
+          className="rounded-md border border-house-primary/60 px-3 py-2 text-sm font-semibold hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+        >
+          {isSaving ? "記録中…" : "閉じる"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-house-primary/40 p-4">
+      <p className="text-xs opacity-70">
+        間違えた問題 {index + 1} / {questions.length}問
+      </p>
+      {questionType === "KanjiReading" ? (
+        <>
+          <VocabularyChoiceStep
+            questionType={questionType}
+            question={question}
+            choices={choices}
+            selected={selected}
+            onSelect={setSelected}
+          />
+          {selected !== null && (
+            <button
+              type="button"
+              onClick={() => void record(selected === question.answer)}
+              className="rounded-md bg-house-primary px-3 py-2 text-sm font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus"
+            >
+              次へ
+            </button>
+          )}
+        </>
+      ) : (
+        <SelfGradedQuestionStep
+          questionType={questionType}
+          question={question}
+          revealed={revealed}
+          onReveal={() => setRevealed(true)}
+          onGrade={(isCorrect) => void record(isCorrect)}
+        />
+      )}
+    </div>
+  );
+}
+
+function MissedQuestionsCard({
+  unit,
+  onFetchQuestions,
+  onReviewingChange,
+}: {
+  unit: LearningUnitView;
+  onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
+  onReviewingChange: (isReviewing: boolean) => void;
+}) {
+  const [allQuestions, setAllQuestions] = useState<QuestionView[] | null>(null);
+  const [reviewQuestions, setReviewQuestions] = useState<QuestionView[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void onFetchQuestions(unit.id).then((fetched) => {
+      if (!cancelled) setAllQuestions(fetched);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [unit.id, onFetchQuestions]);
+
+  const missed = (allQuestions ?? []).filter((question) => unit.missedQuestionIds.includes(question.id));
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-house-primary/40 bg-house-text/5 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">
+          {unit.title}（{unit.missedQuestionIds.length}問）
+        </p>
+        {!reviewQuestions && (
+          <button
+            type="button"
+            onClick={() => {
+              setReviewQuestions(missed);
+              onReviewingChange(true);
+            }}
+            disabled={missed.length === 0}
+            className="rounded-md bg-house-primary px-3 py-1.5 text-xs font-semibold text-house-on-primary hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus disabled:opacity-50"
+          >
+            間違えた問題だけ解き直す
+          </button>
+        )}
+      </div>
+      {reviewQuestions && allQuestions ? (
+        <MissedReviewPanel
+          unit={unit}
+          questions={reviewQuestions}
+          allQuestions={allQuestions}
+          onClose={() => {
+            setReviewQuestions(null);
+            onReviewingChange(false);
+          }}
+        />
+      ) : (
+        <ol className="flex flex-col gap-1 text-sm">
+          {allQuestions === null ? (
+            <li className="text-xs opacity-70">読み込み中…</li>
+          ) : (
+            missed.map((question) => (
+              <li key={question.id} className="rounded px-2 py-1 even:bg-house-text/5" lang="ja">
+                {question.prompt}
+              </li>
+            ))
+          )}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 function TowerTab({
   units,
   filter,
@@ -1833,16 +2007,41 @@ function TowerTab({
   units: LearningUnitView[];
   filter: Subject | "all";
   onFilterChange: (filter: Subject | "all") => void;
-  onRecordAttempt: (learningUnitId: string, isCorrect: boolean) => void;
+  onRecordAttempt: (learningUnitId: string, questionId: string, isCorrect: boolean) => void;
   onFetchQuestions: (learningUnitId: string) => Promise<QuestionView[]>;
 }) {
   const filtered = filter === "all" ? units : units.filter((unit) => unit.subject === filter);
   const phantoms = filtered.filter(
     (unit) => unit.attemptCount > 0 && unit.understandingRate < WEAK_UNDERSTANDING_THRESHOLD,
   );
+  // 解き直し中の単元は、全問正解して一覧が空になっても結果を見せるため残しておく。
+  const [reviewingUnitId, setReviewingUnitId] = useState<string | null>(null);
+  const missedKanjiUnits = units.filter(
+    (unit) =>
+      unit.questionType !== null &&
+      MISSED_REVIEW_QUESTION_TYPES.includes(unit.questionType) &&
+      (unit.missedQuestionIds.length > 0 || unit.id === reviewingUnitId),
+  );
 
   return (
     <div className="flex flex-col gap-4">
+      <GrimoireCard title="間違えた漢字">
+        {missedKanjiUnits.length === 0 ? (
+          <p className="text-sm opacity-80">間違えた漢字はありません。</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {missedKanjiUnits.map((unit) => (
+              <MissedQuestionsCard
+                key={unit.id}
+                unit={unit}
+                onFetchQuestions={onFetchQuestions}
+                onReviewingChange={(isReviewing) => setReviewingUnitId(isReviewing ? unit.id : null)}
+              />
+            ))}
+          </div>
+        )}
+      </GrimoireCard>
+
       <GrimoireCard
         title={
           <span className="flex items-center gap-2">
@@ -1962,7 +2161,8 @@ export default function AcademyPage() {
   }
 
   const unitById = new Map(overview.units.map((unit) => [unit.id, unit]));
-  const onRecordAttempt = (id: string, isCorrect: boolean) => void recordAttemptFor(id, isCorrect);
+  const onRecordAttempt = (id: string, questionId: string, isCorrect: boolean) =>
+    void recordAttemptFor(id, questionId, isCorrect);
   const phantomCount = overview.units.filter(
     (unit) => unit.attemptCount > 0 && unit.understandingRate < WEAK_UNDERSTANDING_THRESHOLD,
   ).length;

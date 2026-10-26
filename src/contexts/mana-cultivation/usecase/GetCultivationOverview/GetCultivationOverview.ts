@@ -26,6 +26,7 @@ export type LearningUnitView = {
   referenceAudioUrl: string | null;
   understandingRate: number;
   attemptCount: number;
+  missedQuestionIds: string[];
 };
 
 // 予定されたテスト1件の目標カード用の情報（第21回ヒアリング）。
@@ -108,6 +109,7 @@ export class GetCultivationOverview {
         referenceAudioUrl: unit.referenceAudioUrl,
         understandingRate: progress.getUnderstanding(unit.id).rate,
         attemptCount: progress.getUnderstanding(unit.id).totalCount,
+        missedQuestionIds: progress.getMissedQuestionIds(unit.id),
       })),
       examGoals,
     };

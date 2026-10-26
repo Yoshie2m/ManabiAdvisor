@@ -11,7 +11,12 @@ export class RecordAttempt {
     private readonly curriculumRepository: CurriculumRepository,
   ) {}
 
-  async execute(studentId: StudentId, learningUnitId: string, isCorrect: boolean): Promise<UnderstandingLevel> {
+  async execute(
+    studentId: StudentId,
+    learningUnitId: string,
+    questionId: string,
+    isCorrect: boolean,
+  ): Promise<UnderstandingLevel> {
     const progress = await this.cultivationProgressRepository.findByStudentId(studentId);
     if (!progress) {
       throw new Error(`CultivationProgress not found for student: ${studentId.toString()}`);
@@ -26,7 +31,7 @@ export class RecordAttempt {
       throw new Error(`Curriculum not found: ${learningUnit.curriculumId}`);
     }
 
-    const level = progress.recordAttempt(curriculum, learningUnit, isCorrect);
+    const level = progress.recordAttempt(curriculum, learningUnit, questionId, isCorrect);
     await this.cultivationProgressRepository.save(progress);
     return level;
   }

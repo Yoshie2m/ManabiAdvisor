@@ -83,7 +83,10 @@ describe("GetCultivationOverview", () => {
       learningUnitRepository,
       upcomingExamRepository,
     } = fakeRepositories();
-    progress.recordAttempt(mathCurriculum, unit1, true);
+    progress.recordAttempt(mathCurriculum, unit1, "q-1", true);
+    progress.recordAttempt(mathCurriculum, unit1, "q-2", false);
+    progress.recordAttempt(mathCurriculum, unit1, "q-2", true);
+    progress.recordAttempt(mathCurriculum, unit1, "q-3", false);
     const usecase = new GetCultivationOverview(
       cultivationProgressRepository,
       curriculumRepository,
@@ -96,10 +99,10 @@ describe("GetCultivationOverview", () => {
     expect(overview.grade).toBe("Second");
     expect(overview.abilities).toHaveLength(5);
     expect(overview.manaGels).toHaveLength(5);
-    expect(overview.manaGels).toContainEqual({ subject: "Math", count: 1 });
+    expect(overview.manaGels).toContainEqual({ subject: "Math", count: 2 });
     expect(overview.manaGels).toContainEqual({ subject: "English", count: 0 });
     expect(overview.units).toEqual([
-      expect.objectContaining({ id: "unit-math-1", subject: "Math", understandingRate: 100 }),
+      expect.objectContaining({ id: "unit-math-1", subject: "Math", understandingRate: 50, missedQuestionIds: ["q-3"] }),
     ]);
     expect(overview.examGoals).toEqual([
       {
@@ -114,7 +117,7 @@ describe("GetCultivationOverview", () => {
         id: "exam-midterm",
         title: "定期テスト",
         scheduledDate: midterm.scheduledDate,
-        readiness: 50,
+        readiness: 25,
         focusUnitId: "unit-math-2",
         focusUnitTitle: null,
       },
