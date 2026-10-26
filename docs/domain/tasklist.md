@@ -478,3 +478,13 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] 問題の無い16単元を定期テストの範囲から外す（ユーザー指示。範囲は英語の例文練習6単元のみ）
 - [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 35. 魔力修練コンテキスト（中2英語 Lesson 1・4・5 の教科書内容の登録）✅実装済み
+
+`specs/mana-cultivation.md`「意思決定の経緯（第24回ヒアリング）」節を参照。ドメインモデルの変更なし。
+
+- [x] `englishTextbookSeedData.ts`: Lesson 1・4・5 の文法単元（読み物＋音声）9件と並べ替え単元9件（計63問）を追加
+- [x] `seedData.ts`: 仮置きの英語単元6件を削除（同じIDで教科書の内容に置き換え）
+- [x] gTTSで会話文の音声9本を生成し`public/audio/`へ配置
+- [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認

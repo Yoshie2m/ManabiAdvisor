@@ -72,15 +72,7 @@ Grandma: Oh, what lovely colors! It'll look perfect on that wall.
 ・Tom is holding a dozen roses and there is a large present on the table.`;
 
 export const learningUnits: LearningUnit[] = [
-  // PROGRESS 21 Book 2 Lesson 1〜5。各Lessonは2つのScene（文法点）からなる。
-  LearningUnit.create(
-    { id: "unit-english-l1-s1", curriculumId: "curriculum-english", title: "Lesson 1 Scene 1: 未来を表す表現 (will / be going to)", difficulty: 2 },
-    "English",
-  ),
-  LearningUnit.create(
-    { id: "unit-english-l1-s2", curriculumId: "curriculum-english", title: "Lesson 1 Scene 2: 第4文型 (give+人+物)", difficulty: 3 },
-    "English",
-  ),
+  // PROGRESS 21 Book 2 Lesson 1〜5。各Lessonは3つのScene（文法点）からなる（Lesson 2 Scene 1以外は englishTextbookSeedData.ts）。
   LearningUnit.create(
     {
       id: "unit-english-l2-s1",
@@ -106,22 +98,6 @@ export const learningUnits: LearningUnit[] = [
     "English",
   ),
   ...englishTextbookLearningUnits,
-  LearningUnit.create(
-    { id: "unit-english-l4-s1", curriculumId: "curriculum-english", title: "Lesson 4 Scene 1: 最上級の表現 (the+最上級)", difficulty: 2 },
-    "English",
-  ),
-  LearningUnit.create(
-    { id: "unit-english-l4-s2", curriculumId: "curriculum-english", title: "Lesson 4 Scene 2: 最上級の範囲・対象 (in / of)", difficulty: 3 },
-    "English",
-  ),
-  LearningUnit.create(
-    { id: "unit-english-l5-s1", curriculumId: "curriculum-english", title: "Lesson 5 Scene 1: 前置詞 with の識別", difficulty: 3 },
-    "English",
-  ),
-  LearningUnit.create(
-    { id: "unit-english-l5-s2", curriculumId: "curriculum-english", title: "Lesson 5 Scene 2: 付帯状況の基礎", difficulty: 4 },
-    "English",
-  ),
   // 単語マスターI（Lesson 2 新出語彙、全99語）。4択クイズ形式。
   LearningUnit.create(
     {
