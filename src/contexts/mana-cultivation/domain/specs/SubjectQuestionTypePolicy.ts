@@ -11,6 +11,7 @@ const QUESTION_TYPES_BY_SUBJECT: Partial<Record<Subject, readonly QuestionType[]
   Math: ["Calculation", "WordProblem"],
   Japanese: ["KanjiWriting", "KanjiReading"],
   SocialStudies: ["MultipleChoice", "OneQuestionOneAnswer"],
+  Science: ["MultipleChoice", "OneQuestionOneAnswer"],
 };
 
 export const subjectQuestionTypePolicy: SubjectQuestionTypePolicy = {

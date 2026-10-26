@@ -5,6 +5,7 @@ import { Question } from "../../domain/models/Question";
 import { UpcomingExam } from "../../domain/models/UpcomingExam";
 import { englishTextbookLearningUnits, englishTextbookQuestions } from "./englishTextbookSeedData";
 import { preSocialCurriculum, preSocialLearningUnits, preSocialQuestions } from "./preSocialSeedData";
+import { scienceLearningUnits, scienceQuestions } from "./scienceSeedData";
 
 // 動作確認用の仮コンテンツ。本来はFirestoreのコレクション/Cloud Storageに格納する
 // （CLAUDE.md の学習コンテンツ配置方針を参照）。DB連携時にこのファイルは廃止する。
@@ -255,64 +256,7 @@ export const learningUnits: LearningUnit[] = [
     },
     "Japanese",
   ),
-  // 徹底演習テキスト 中2（受験研究社）単元4 電流とその利用。各節を1ユニットとする。
-  LearningUnit.create(
-    { id: "unit-science-u4-c1-s1", curriculumId: "curriculum-science", title: "1章 電流の性質 1: 電流が流れる道すじ", difficulty: 1 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c1-s2", curriculumId: "curriculum-science", title: "1章 電流の性質 2: 回路に流れる電流", difficulty: 2 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c1-s3", curriculumId: "curriculum-science", title: "1章 電流の性質 3: 回路に加わる電圧", difficulty: 2 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c1-s4", curriculumId: "curriculum-science", title: "1章 電流の性質 4: 電圧と電流の関係", difficulty: 3 },
-    "Science",
-  ),
-  LearningUnit.create(
-    {
-      id: "unit-science-u4-c1-s5",
-      curriculumId: "curriculum-science",
-      title: "1章 電流の性質 5: 電流、電圧、電気抵抗の求め方",
-      difficulty: 4,
-    },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c1-s6", curriculumId: "curriculum-science", title: "1章 電流の性質 6: 電流のはたらきを表す量", difficulty: 3 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c2-s1", curriculumId: "curriculum-science", title: "2章 電流の正体 1: 静電気", difficulty: 2 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c2-s2", curriculumId: "curriculum-science", title: "2章 電流の正体 2: 静電気と電流の関係", difficulty: 2 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c2-s3", curriculumId: "curriculum-science", title: "2章 電流の正体 3: 電流の正体", difficulty: 3 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c2-s4", curriculumId: "curriculum-science", title: "2章 電流の正体 4: 放射線の発見とその利用", difficulty: 2 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c3-s1", curriculumId: "curriculum-science", title: "3章 電流と磁界 1: 磁界", difficulty: 2 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c3-s2", curriculumId: "curriculum-science", title: "3章 電流と磁界 2: モーターのしくみ", difficulty: 3 },
-    "Science",
-  ),
-  LearningUnit.create(
-    { id: "unit-science-u4-c3-s3", curriculumId: "curriculum-science", title: "3章 電流と磁界 3: 発電機のしくみ", difficulty: 3 },
-    "Science",
-  ),
+  ...scienceLearningUnits,
   // ウイニング 歴史Ⅰ・Ⅱ（好学出版）「中学社会 歴史」第4章 近世の日本と世界。各節を1ユニットとする。
   LearningUnit.create(
     { id: "unit-social-c4-s1", curriculumId: "curriculum-social", title: "第4章 近世の日本と世界 1: 結びつく世界との出会い", difficulty: 2 },
@@ -752,5 +696,6 @@ export const questions: Question[] = [
   ...englishVocab1Questions,
   ...lesson2Scene1PracticeQuestions,
   ...preSocialQuestions,
+  ...scienceQuestions,
   ...englishTextbookQuestions,
 ];

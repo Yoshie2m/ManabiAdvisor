@@ -65,6 +65,27 @@ describe("Question", () => {
     });
   });
 
+  describe("answerImageUrl", () => {
+    it("defaults to null when omitted", () => {
+      const question = Question.create({ id: "q1", learningUnitId: "unit-1", prompt: "磁力線を描け。", answer: "N極からS極へ" });
+
+      expect(question.answerImageUrl).toBeNull();
+    });
+
+    it("keeps the answerImageUrl passed to create and reconstruct", () => {
+      const props = {
+        id: "q1",
+        learningUnitId: "unit-1",
+        prompt: "磁力線を描け。",
+        answer: "N極からS極へ",
+        answerImageUrl: "/images/sci2/20-ans-01.jpg",
+      };
+
+      expect(Question.create(props).answerImageUrl).toBe("/images/sci2/20-ans-01.jpg");
+      expect(Question.reconstruct(props).answerImageUrl).toBe("/images/sci2/20-ans-01.jpg");
+    });
+  });
+
   describe("reconstruct", () => {
     it("restores fields without re-checking for empty prompt/answer", () => {
       const question = Question.reconstruct({

@@ -43,14 +43,16 @@ describe("subjectQuestionTypePolicy", () => {
     }
   });
 
-  it("allows MultipleChoice and OneQuestionOneAnswer for SocialStudies", () => {
-    for (const questionType of ["MultipleChoice", "OneQuestionOneAnswer"] as const) {
-      expect(subjectQuestionTypePolicy.isSatisfiedBy("SocialStudies", questionType)).toBe(true);
+  it("allows MultipleChoice and OneQuestionOneAnswer for SocialStudies and Science", () => {
+    for (const subject of ["SocialStudies", "Science"] as const) {
+      for (const questionType of ["MultipleChoice", "OneQuestionOneAnswer"] as const) {
+        expect(subjectQuestionTypePolicy.isSatisfiedBy(subject, questionType)).toBe(true);
+      }
     }
   });
 
-  it("rejects the SocialStudies question types for other subjects", () => {
-    for (const subject of ["English", "Math", "Japanese", "Science"] as const) {
+  it("rejects MultipleChoice and OneQuestionOneAnswer for the other subjects", () => {
+    for (const subject of ["English", "Math", "Japanese"] as const) {
       for (const questionType of ["MultipleChoice", "OneQuestionOneAnswer"] as const) {
         expect(subjectQuestionTypePolicy.isSatisfiedBy(subject, questionType)).toBe(false);
       }

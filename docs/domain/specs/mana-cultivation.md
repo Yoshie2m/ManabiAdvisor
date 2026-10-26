@@ -102,6 +102,7 @@ class Question {
   readonly answer: string;
   readonly explanation: string | null; // 正解に添える解説・考え方。採点対象外の表示用テキスト（省略時null）
   readonly imageUrl: string | null; // 問題に添える図・写真のURL（省略時null。第17回ヒアリング）
+  readonly answerImageUrl: string | null; // 答えの図。自己採点で「正解を見る」の後に表示（省略時null。第25回ヒアリング）
 }
 ```
 
@@ -614,6 +615,32 @@ class CultivationProgress {
 - 会話文の音声9本を gTTS で生成し `public/audio/lesson{1,4,5}-scene{n}.mp3` に置いた。
 - その後ユーザーの指示で、定期テストの範囲を Lesson 2〜5 の例文練習12単元にした。
 - 魔導書庫の単元一覧は、「Lesson N Scene ...」の単元を Lesson ごとの折りたたみグループにまとめ、単語マスターなどそれ以外の単元を一番上に並べる（UIのみの変更）。
+
+## 意思決定の経緯（第25回ヒアリング: 中2理科を4択・一問一答で登録し、図で答える問題は答えの図で自己採点）
+
+ユーザーから、中2理科の問題集（第3章 電流とその利用の16〜21章、`content-workshop/output/sci2-16〜21`）を「一問一答」と「4択」で登録し、図で答える問題（磁力線を描け、回路図に描きかえよ、方位磁針の向きを描け、グラフを描き加えよ等）は漢字の書き取りのように一問一答にして、「正解を見る」の次の画面で答えの図を表示してユーザーに自己採点させたい、という依頼を受けた。実装前にユーザーへ4点を確認し、以下の方針で合意済み:
+
+1. **単元の分け方**: 章ごとに「4択」と「一問一答」の単元を作る（6章×2形式＝12単元）。魔導書庫では英語の Lesson と同じく章ごとに折りたたむ。
+2. **仮置きの単元**: 理科の仮置き単元13件（`unit-science-u4-*`、問題なし）は削除する。
+3. **4択の対象**: 語句・数値で答える問題だけ。もともとア〜エの選択肢がある記号選択、記述、図で答える問題は4択に入れず、一問一答だけに入れる（記号だけの4択は意味がないため）。
+4. **問題ページが写真に無い問題（22問）**: 今回は登録しない。写真を追加したら同じ手順で足す。
+
+### 実装
+
+**ドメイン層の変更**:
+- `SubjectQuestionTypePolicy`で`Science`にも`MultipleChoice`・`OneQuestionOneAnswer`を許可する。
+- `Question`に`answerImageUrl: string | null`（答えの図）を追加する（`imageUrl`・`explanation`と同じ任意項目のパターン。`QuestionProps.answerImageUrl?: string`）。答えの図を持つ問題でも`answer`（文字の正解）は必須のまま（図の内容を文で説明したものを入れる）。
+
+**コンテンツ構成**: `infrastructure/memory/scienceSeedData.ts`に章ごとの問題データを置き、4択・一問一答の単元と問題を作る。空欄が複数ある問題は空欄ごとに分ける（第17回と同じ）。問題の図・答えの図は`public/images/sci2/`に置く（第17回と同じ暫定運用）。
+
+**UI層**:
+- 一問一答（自己採点）画面で「正解を見る」を押したとき、`answerImageUrl`があれば答えの文の下に答えの図を表示する。
+- 魔導書庫の単元一覧で、「Lesson N ...」に加えて、末尾の「（4択）」「（一問一答）」を除いた名前が同じ単元を1つの折りたたみにまとめる（理科は章ごと、社会の小6は分野ごとにまとまる）。
+
+### テストで守る不変条件
+
+- `SubjectQuestionTypePolicy`は`Science`に`MultipleChoice`・`OneQuestionOneAnswer`を許可する（社会は引き続き許可、英語・数学・国語には許可しない）。
+- `Question.create`/`reconstruct`は`answerImageUrl`を省略すると`null`、指定すればその値を保持する。
 
 ## 値オブジェクト
 

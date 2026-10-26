@@ -8,8 +8,8 @@ export const QUESTION_TYPES = [
   "WordProblem", // 文章題（数学）
   "KanjiWriting", // 漢字の書き（国語）
   "KanjiReading", // 漢字の読み（国語）
-  "MultipleChoice", // 4択（当面は社会のみ）
-  "OneQuestionOneAnswer", // 一問一答（当面は社会のみ）
+  "MultipleChoice", // 4択（社会・理科）
+  "OneQuestionOneAnswer", // 一問一答（社会・理科）
 ] as const;
 
 export type QuestionType = (typeof QUESTION_TYPES)[number];

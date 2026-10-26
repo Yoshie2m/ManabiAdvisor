@@ -490,3 +490,16 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] 魔導書庫の単元一覧を Lesson ごとにグループ化し、単語マスターを一番上に表示
 - [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認
+
+## 36. 魔力修練コンテキスト（中2理科の4択・一問一答と、答えの図による自己採点）✅完了
+
+`specs/mana-cultivation.md`「意思決定の経緯（第25回ヒアリング）」節を参照。
+
+- [x] `SubjectQuestionTypePolicy.test.ts` → `SubjectQuestionTypePolicy.ts`: `Science`に2形式を許可
+- [x] `Question.test.ts` → `Question.ts`: `answerImageUrl`（省略時null）
+- [x] `FirebaseQuestionRepository`・`scripts/seedFirestore.ts`・`useAcademyStore.ts`（`QuestionView`）: `answerImageUrl`の受け渡し
+- [x] 答えの図を解答ページの写真から切り出し、問題の図とあわせて`public/images/sci2/`へ配置
+- [x] `infrastructure/memory/scienceSeedData.ts`: 16〜21章の4択・一問一答の単元12件と問題。`seedData.ts`の仮置き理科単元13件を削除
+- [x] `src/app/academy/page.tsx`: 自己採点画面で答えの図を表示。魔導書庫で「（4択）」「（一問一答）」を除いた名前ごとに折りたたむ
+- [x] `npm run seed`でFirestoreへ投入し、仮置き理科単元13件を削除（一時的に書き込みを許可→元へ戻してデプロイ）
+- [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認

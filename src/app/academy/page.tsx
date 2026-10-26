@@ -97,13 +97,13 @@ const QUIZ_CARD_PRESET_BY_QUESTION_TYPE: Record<QuestionType, QuizCardPresetProp
   },
 };
 
-function QuestionImage({ url }: { url: string | null }) {
+function QuestionImage({ url, alt = "問題の図" }: { url: string | null; alt?: string }) {
   if (!url) {
     return null;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt="問題の図" className="max-h-64 w-auto self-start rounded-md border border-house-primary/30" />
+    <img src={url} alt={alt} className="max-h-64 w-auto self-start rounded-md border border-house-primary/30" />
   );
 }
 
@@ -495,6 +495,7 @@ function SelfGradedQuestionStep({
           >
             {question.answer}
           </p>
+          <QuestionImage url={question.answerImageUrl} alt="答えの図" />
           <div className="flex gap-2">
             <button
               type="button"
@@ -1680,15 +1681,21 @@ function LibraryTab({
   const units = overview.units
     .filter((unit) => unit.subject === selectedSubject)
     .sort((a, b) => (a.questionType ? 0 : 1) - (b.questionType ? 0 : 1));
-  // 「Lesson N Scene ...」の単元は Lesson ごとにまとめ、それ以外（単語マスター等）は上に並べる。
-  const lessonOf = (unit: LearningUnitView) => unit.title.match(/^Lesson (\d+) /)?.[1] ?? null;
-  const looseUnits = units.filter((unit) => lessonOf(unit) === null);
-  const lessonGroups = [...new Set(units.map(lessonOf).filter((lesson): lesson is string => lesson !== null))]
-    .sort((a, b) => Number(a) - Number(b))
-    .map((lesson) => ({
-      lesson,
-      units: units.filter((unit) => lessonOf(unit) === lesson).sort((a, b) => a.id.localeCompare(b.id)),
-    }));
+  // 「Lesson N Scene ...」の単元は Lesson ごとに、「〇〇（4択）」「〇〇（一問一答）」の単元は
+  // 〇〇ごとにまとめ、それ以外（単語マスター等）は上に並べる。
+  const groupOf = (unit: LearningUnitView): { key: string; order: string } | null => {
+    const lesson = unit.title.match(/^Lesson (\d+) /)?.[1];
+    if (lesson) return { key: `Lesson ${lesson}`, order: lesson.padStart(3, "0") };
+    const base = unit.title.match(/^(.+)（(?:4択|一問一答)）$/)?.[1];
+    return base ? { key: base, order: unit.id } : null;
+  };
+  const looseUnits = units.filter((unit) => groupOf(unit) === null);
+  const unitGroups = [...new Set(units.map((unit) => groupOf(unit)?.key).filter((key): key is string => key !== undefined))]
+    .map((key) => {
+      const groupUnits = units.filter((unit) => groupOf(unit)?.key === key).sort((a, b) => a.id.localeCompare(b.id));
+      return { key, order: groupOf(groupUnits[0])?.order ?? key, units: groupUnits };
+    })
+    .sort((a, b) => a.order.localeCompare(b.order));
 
   return (
     <div className="flex flex-col gap-4">
@@ -1725,11 +1732,11 @@ function LibraryTab({
                   onFetchQuestions={onFetchQuestions}
                 />
               ))}
-              {lessonGroups.map((group) => (
-                <details key={group.lesson} className="group rounded-md border border-house-primary/40">
+              {unitGroups.map((group) => (
+                <details key={group.key} className="group rounded-md border border-house-primary/40">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus">
                     <span>
-                      Lesson {group.lesson}
+                      {group.key}
                       <span className="ml-2 text-xs font-normal opacity-70">{group.units.length}単元</span>
                     </span>
                     <span aria-hidden="true" className="transition-transform group-open:rotate-90 motion-reduce:transition-none">

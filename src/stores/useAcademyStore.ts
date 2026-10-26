@@ -94,6 +94,7 @@ export type QuestionView = {
   answer: string;
   explanation: string | null;
   imageUrl: string | null;
+  answerImageUrl: string | null;
 };
 
 export type QuizSessionView = {
@@ -334,6 +335,7 @@ export const useAcademyStore = create<AcademyState>((set, get) => ({
         answer: question.answer,
         explanation: question.explanation,
         imageUrl: question.imageUrl,
+        answerImageUrl: question.answerImageUrl,
       }))
       .sort((a, b) => a.id.localeCompare(b.id));
   },

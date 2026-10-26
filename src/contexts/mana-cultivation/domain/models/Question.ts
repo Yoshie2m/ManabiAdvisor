@@ -7,6 +7,8 @@ export type QuestionProps = {
   explanation?: string;
   // 省略可。問題に添える図・写真のURL。
   imageUrl?: string;
+  // 省略可。答えの図。図で答える問題で「正解を見る」の後に表示し、自己採点させる。
+  answerImageUrl?: string;
 };
 
 export class Question {
@@ -17,20 +19,21 @@ export class Question {
     readonly answer: string,
     readonly explanation: string | null,
     readonly imageUrl: string | null,
+    readonly answerImageUrl: string | null,
   ) {}
 
-  static create({ id, learningUnitId, prompt, answer, explanation, imageUrl }: QuestionProps): Question {
+  static create({ id, learningUnitId, prompt, answer, explanation, imageUrl, answerImageUrl }: QuestionProps): Question {
     if (prompt.trim().length === 0) {
       throw new Error("Question.prompt must not be empty");
     }
     if (answer.trim().length === 0) {
       throw new Error("Question.answer must not be empty");
     }
-    return new Question(id, learningUnitId, prompt, answer, explanation ?? null, imageUrl ?? null);
+    return new Question(id, learningUnitId, prompt, answer, explanation ?? null, imageUrl ?? null, answerImageUrl ?? null);
   }
 
   // Trusts persisted invariants instead of re-checking for empty prompt/answer.
-  static reconstruct({ id, learningUnitId, prompt, answer, explanation, imageUrl }: QuestionProps): Question {
-    return new Question(id, learningUnitId, prompt, answer, explanation ?? null, imageUrl ?? null);
+  static reconstruct({ id, learningUnitId, prompt, answer, explanation, imageUrl, answerImageUrl }: QuestionProps): Question {
+    return new Question(id, learningUnitId, prompt, answer, explanation ?? null, imageUrl ?? null, answerImageUrl ?? null);
   }
 }
