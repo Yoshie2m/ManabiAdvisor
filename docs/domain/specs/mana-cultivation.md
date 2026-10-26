@@ -602,7 +602,8 @@ class CultivationProgress {
 - **読み物**: 各Sceneの文法単元の`referenceText`に、場面説明・会話文・Checkの文法説明をまとめる。会話文の英語のセリフだけをgTTSで読み上げた音声を`public/audio/lesson{2,3}-scene{n}.mp3`に置き、`referenceAudioUrl`に設定した（第15回と同じ手順・暫定運用）。
 - **Lookの並べ替え**: 各Sceneに`PassageTranslationToEnglish`の練習単元（`unit-english-lX-sY-practice`）を置き、Lookの例文を単語の並べ替えで作らせる（Lesson 2 Scene 1と同じ画面）。正解は教科書のLookそのもの。問題文の日本語訳はClaudeが付けた。Lesson 2 Scene 1は登録済みの例文練習3問が教科書のLookと同じなので、そのまま使う。
 - ドメインモデルの変更は無い（既存の`LearningUnit.referenceText`／`referenceAudioUrl`と`PassageTranslationToEnglish`を使う）。データは`infrastructure/memory/englishTextbookSeedData.ts`。
-- 定期テストの範囲（`exam-2nd-midterm`）は変更していない。
+- 定期テストの範囲（`exam-2nd-midterm`）には、ユーザーの指示で英語の例文練習6単元（`unit-english-l2-s1-practice`〜`l3-s3-practice`）を加えた（準備状態は問題を解ける単元でしか上がらないため、読み物だけの文法単元ではなく例文練習の単元を入れた）。
+- さらにユーザーの指示で、問題が1問も無い単元（英語の文法単元4・数学3・理科6・社会3）を定期テストの範囲から外した。問題が登録されたら範囲に戻す。現在の範囲は英語の例文練習6単元のみ。
 
 ## 値オブジェクト
 

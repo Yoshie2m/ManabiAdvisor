@@ -474,5 +474,7 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `infrastructure/memory/englishTextbookSeedData.ts`: Lesson 2 Scene 2〜Lesson 3 Scene 3 の文法単元（読み物＋音声）5件と、Lookの並べ替え単元5件（計32問）
 - [x] `seedData.ts`: 仮置きの`unit-english-l2-s2`・`l3-s1`・`l3-s2`を教科書の内容に置き換え、`l2-s3`・`l3-s3`を追加
 - [x] gTTSで会話文の音声5本を生成し`public/audio/`へ配置（生成スクリプトは一時ファイル）
+- [x] 定期テストの範囲に英語の例文練習6単元を追加（ユーザー指示）
+- [x] 問題の無い16単元を定期テストの範囲から外す（ユーザー指示。範囲は英語の例文練習6単元のみ）
 - [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認
