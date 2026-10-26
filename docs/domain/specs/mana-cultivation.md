@@ -612,7 +612,8 @@ class CultivationProgress {
 - 仮置きだった `unit-english-l1-s1`・`l1-s2`・`l4-s1`・`l4-s2`・`l5-s1`・`l5-s2` はIDをそのまま使い、タイトル・読み物を教科書の内容に置き換えた。`l1-s3`・`l4-s3`・`l5-s3` を追加した。これで英語は Lesson 1〜5 の全15 Scene がそろった。
 - 各 Scene に例文練習（`PassageTranslationToEnglish`、並べ替え）を置き、計63問。正解は教科書の Look そのもの、問題文の日本語訳は Claude が付けた。
 - 会話文の音声9本を gTTS で生成し `public/audio/lesson{1,4,5}-scene{n}.mp3` に置いた。
-- 定期テストの範囲は変更していない。
+- その後ユーザーの指示で、定期テストの範囲を Lesson 2〜5 の例文練習12単元にした。
+- 魔導書庫の単元一覧は、「Lesson N Scene ...」の単元を Lesson ごとの折りたたみグループにまとめ、単語マスターなどそれ以外の単元を一番上に並べる（UIのみの変更）。
 
 ## 値オブジェクト
 

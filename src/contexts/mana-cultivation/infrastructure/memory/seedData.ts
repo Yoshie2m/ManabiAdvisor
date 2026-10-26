@@ -367,6 +367,12 @@ export const upcomingExams: UpcomingExam[] = [
       "unit-english-l3-s1-practice",
       "unit-english-l3-s2-practice",
       "unit-english-l3-s3-practice",
+      "unit-english-l4-s1-practice",
+      "unit-english-l4-s2-practice",
+      "unit-english-l4-s3-practice",
+      "unit-english-l5-s1-practice",
+      "unit-english-l5-s2-practice",
+      "unit-english-l5-s3-practice",
     ],
   }),
 ];

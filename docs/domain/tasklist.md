@@ -486,5 +486,7 @@ Firebaseプロジェクト（`manabi-advisor`）・Firestoreデータベース�
 - [x] `englishTextbookSeedData.ts`: Lesson 1・4・5 の文法単元（読み物＋音声）9件と並べ替え単元9件（計63問）を追加
 - [x] `seedData.ts`: 仮置きの英語単元6件を削除（同じIDで教科書の内容に置き換え）
 - [x] gTTSで会話文の音声9本を生成し`public/audio/`へ配置
+- [x] 定期テストの範囲を Lesson 2〜5 の例文練習12単元に変更（ユーザー指示）
+- [x] 魔導書庫の単元一覧を Lesson ごとにグループ化し、単語マスターを一番上に表示
 - [x] `npm run seed`でFirestoreへ投入（一時的に書き込みを許可→投入後に元へ戻してデプロイ）
 - [x] `npx tsc --noEmit` / `npm test` / `npm run lint` / `npm run build` を実行し、エラー0件を確認

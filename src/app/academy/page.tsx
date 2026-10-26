@@ -1680,6 +1680,15 @@ function LibraryTab({
   const units = overview.units
     .filter((unit) => unit.subject === selectedSubject)
     .sort((a, b) => (a.questionType ? 0 : 1) - (b.questionType ? 0 : 1));
+  // 「Lesson N Scene ...」の単元は Lesson ごとにまとめ、それ以外（単語マスター等）は上に並べる。
+  const lessonOf = (unit: LearningUnitView) => unit.title.match(/^Lesson (\d+) /)?.[1] ?? null;
+  const looseUnits = units.filter((unit) => lessonOf(unit) === null);
+  const lessonGroups = [...new Set(units.map(lessonOf).filter((lesson): lesson is string => lesson !== null))]
+    .sort((a, b) => Number(a) - Number(b))
+    .map((lesson) => ({
+      lesson,
+      units: units.filter((unit) => lessonOf(unit) === lesson).sort((a, b) => a.id.localeCompare(b.id)),
+    }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -1707,14 +1716,39 @@ function LibraryTab({
           {units.length === 0 ? (
             <p className="text-sm opacity-70">この属性の単元はまだありません。</p>
           ) : (
-            units.map((unit) => (
-              <LearningUnitRow
-                key={unit.id}
-                unit={unit}
-                onRecordAttempt={onRecordAttempt}
-                onFetchQuestions={onFetchQuestions}
-              />
-            ))
+            <>
+              {looseUnits.map((unit) => (
+                <LearningUnitRow
+                  key={unit.id}
+                  unit={unit}
+                  onRecordAttempt={onRecordAttempt}
+                  onFetchQuestions={onFetchQuestions}
+                />
+              ))}
+              {lessonGroups.map((group) => (
+                <details key={group.lesson} className="group rounded-md border border-house-primary/40">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-house-focus">
+                    <span>
+                      Lesson {group.lesson}
+                      <span className="ml-2 text-xs font-normal opacity-70">{group.units.length}単元</span>
+                    </span>
+                    <span aria-hidden="true" className="transition-transform group-open:rotate-90 motion-reduce:transition-none">
+                      ▶
+                    </span>
+                  </summary>
+                  <div className="flex flex-col gap-2 border-t border-house-primary/30 p-2">
+                    {group.units.map((unit) => (
+                      <LearningUnitRow
+                        key={unit.id}
+                        unit={unit}
+                        onRecordAttempt={onRecordAttempt}
+                        onFetchQuestions={onFetchQuestions}
+                      />
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </>
           )}
         </div>
       </GrimoireCard>
